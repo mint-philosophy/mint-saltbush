@@ -1,6 +1,6 @@
 import AppKit
 
-/// Every action in Folio, in one table. The bare-key map, the menus, and the
+/// Every action in Saltbush, in one table. The bare-key map, the menus, and the
 /// command palette are all built from this list, so they can't drift apart.
 struct Command {
     let title: String
@@ -114,15 +114,15 @@ enum MenuBuilder {
             return menu
         }
 
-        let app = submenu("Folio")
-        app.addItem(withTitle: "About Folio", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        let app = submenu("Saltbush")
+        app.addItem(withTitle: "About Saltbush", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         app.addItem(.separator())
-        app.addItem(withTitle: "Hide Folio", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        app.addItem(withTitle: "Hide Saltbush", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
         app.addItem(withTitle: "Hide Others", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
             .keyEquivalentModifierMask = [.command, .option]
         app.addItem(withTitle: "Show All", action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
         app.addItem(.separator())
-        app.addItem(withTitle: "Quit Folio", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        app.addItem(withTitle: "Quit Saltbush", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
 
         let file = submenu("File")
         file.addItem(withTitle: "Open…", action: #selector(NSDocumentController.openDocument(_:)), keyEquivalent: "o")

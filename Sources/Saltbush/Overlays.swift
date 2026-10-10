@@ -1,5 +1,5 @@
 import AppKit
-import FolioCore
+import SaltbushCore
 import PDFKit
 
 private func styleAsPanel(_ view: NSVisualEffectView, radius: CGFloat) {

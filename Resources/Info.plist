@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDisplayName</key>
-	<string>Folio</string>
+	<string>Saltbush</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -22,19 +22,19 @@
 		</dict>
 	</array>
 	<key>CFBundleExecutable</key>
-	<string>Folio</string>
+	<string>Saltbush</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
-	<string>org.mintresearch.folio</string>
+	<string>org.mintresearch.saltbush</string>
 	<key>CFBundleName</key>
-	<string>Folio</string>
+	<string>Saltbush</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.2</string>
+	<string>0.3</string>
 	<key>CFBundleVersion</key>
-	<string>2</string>
+	<string>3</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.productivity</string>
 	<key>LSMinimumSystemVersion</key>

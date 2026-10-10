@@ -1,10 +1,10 @@
 #if DEBUG
 import AppKit
-import FolioCore
+import SaltbushCore
 import PDFKit
 
-/// Debug-only scripted driver. Set FOLIO_TEST_SCRIPT to a file of steps and
-/// FOLIO_TEST_LOG to an output file; the first window to open runs the script.
+/// Debug-only scripted driver. Set SALTBUSH_TEST_SCRIPT to a file of steps and
+/// SALTBUSH_TEST_LOG to an output file; the first window to open runs the script.
 /// Keys go through the same path as real typing (key monitor, then the window).
 ///
 /// Steps: key <char|esc|ret|sret|down|up|del|space|sspace> · type <text> · wait <s>
@@ -14,22 +14,22 @@ extension ReaderWindowController {
 
     func startTestScriptIfRequested() {
         let env = ProcessInfo.processInfo.environment
-        guard !Self.started, let path = env["FOLIO_TEST_SCRIPT"], let log = env["FOLIO_TEST_LOG"],
+        guard !Self.started, let path = env["SALTBUSH_TEST_SCRIPT"], let log = env["SALTBUSH_TEST_LOG"],
               let script = try? String(contentsOfFile: path, encoding: .utf8) else { return }
         Self.started = true
         FileManager.default.createFile(atPath: log, contents: nil)
         let steps = script.split(separator: "\n").map(String.init).filter { !$0.trimmed.isEmpty && !$0.hasPrefix("#") }
         window?.contentView?.wantsLayer = true
-        // Scripted steps never end an event cycle, so rely on Folio's explicit per-edit groups only.
+        // Scripted steps never end an event cycle, so rely on Saltbush's explicit per-edit groups only.
         undo?.groupsByEvent = false
         // Keep test copies off the real clipboard.
-        pasteboard = NSPasteboard(name: NSPasteboard.Name("org.mintresearch.folio.test"))
+        pasteboard = NSPasteboard(name: NSPasteboard.Name("org.mintresearch.saltbush.test"))
         run(steps[...], log: log)
     }
 
     private func run(_ steps: ArraySlice<String>, log: String) {
         guard let step = steps.first else { return }
-        if ProcessInfo.processInfo.environment["FOLIO_TEST_TRACE"] != nil { append(log, "> " + step) }
+        if ProcessInfo.processInfo.environment["SALTBUSH_TEST_TRACE"] != nil { append(log, "> " + step) }
         let parts = step.split(separator: " ", maxSplits: 1).map(String.init)
         let arg = parts.count > 1 ? parts[1] : ""
         var delay = 0.15
@@ -137,7 +137,7 @@ extension ReaderWindowController {
                 pdfView.go(to: d)
             }
         case "menu":
-            // menu <title>: report whether a Folio menu command is enabled right now.
+            // menu <title>: report whether a Saltbush menu command is enabled right now.
             let item = NSMenuItem(title: arg, action: #selector(performCommand(_:)), keyEquivalent: "")
             append(log, "menu \(arg) enabled=\(validateMenuItem(item))")
         case "click":
@@ -184,7 +184,7 @@ extension ReaderWindowController {
                                            windowNumber: target.windowNumber, context: nil, characters: chars,
                                            charactersIgnoringModifiers: chars, isARepeat: false, keyCode: code)
         else { return }
-        if ProcessInfo.processInfo.environment["FOLIO_TEST_REAL"] != nil {
+        if ProcessInfo.processInfo.environment["SALTBUSH_TEST_REAL"] != nil {
             // Through the event queue, exactly like a physical keypress (monitors included).
             NSApp.postEvent(event, atStart: false)
             return

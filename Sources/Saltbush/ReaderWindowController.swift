@@ -1,5 +1,5 @@
 import AppKit
-import FolioCore
+import SaltbushCore
 import PDFKit
 
 final class ReaderPDFView: PDFView {
@@ -100,7 +100,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
         super.init(window: window)
         window.delegate = self
         window.acceptsMouseMovedEvents = true
-        window.setFrameAutosaveName("FolioReader")
+        window.setFrameAutosaveName("SaltbushReader")
 
         let container = NSView()
         window.contentView = container
@@ -150,7 +150,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
         DispatchQueue.main.async {
             self.restorePosition()
             self.window?.makeFirstResponder(self.pdfView)
-            // The first time Folio opens, show what the keys do.
+            // The first time Saltbush opens, show what the keys do.
             if !UserDefaults.standard.bool(forKey: "shortcutsShown") {
                 UserDefaults.standard.set(true, forKey: "shortcutsShown")
                 self.showShortcuts()
@@ -262,7 +262,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
         if textSelection != nil { recentHighlight = nil }
     }
 
-    /// Folio's own commands stand aside while you're typing in a note or the find bar,
+    /// Saltbush's own commands stand aside while you're typing in a note or the find bar,
     /// so ⌘↑, ⌘↓ and the rest do what they do in any text field.
     @objc func validateMenuItem(_ item: NSMenuItem) -> Bool {
         guard item.action == #selector(performCommand(_:)) else { return true }

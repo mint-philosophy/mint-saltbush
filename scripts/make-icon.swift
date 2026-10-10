@@ -1,9 +1,15 @@
-// Renders the Folio icon into an .iconset folder: a page with one highlighted, annotated line.
+// Renders the Saltbush icon into an .iconset folder: a page with a highlighted line and a note circle,
+// on a saltbush-coloured tile.
 // Usage: swift scripts/make-icon.swift build/AppIcon.iconset && iconutil -c icns build/AppIcon.iconset -o Resources/AppIcon.icns
 import AppKit
 
 let out = CommandLine.arguments[1]
 try FileManager.default.createDirectory(atPath: out, withIntermediateDirectories: true)
+
+func rgb(_ hex: Int) -> NSColor {
+    NSColor(srgbRed: CGFloat((hex >> 16) & 0xff) / 255, green: CGFloat((hex >> 8) & 0xff) / 255,
+            blue: CGFloat(hex & 0xff) / 255, alpha: 1)
+}
 
 func render(_ px: Int) -> Data {
     let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: px, pixelsHigh: px, bitsPerSample: 8,
@@ -13,31 +19,48 @@ func render(_ px: Int) -> Data {
     NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
     NSGraphicsContext.current!.cgContext.scaleBy(x: CGFloat(px) / 1024, y: CGFloat(px) / 1024)
 
-    let body = NSBezierPath(roundedRect: NSRect(x: 100, y: 100, width: 824, height: 824), xRadius: 185, yRadius: 185)
+    // Saltbush tile.
+    let tile = NSBezierPath(roundedRect: NSRect(x: 100, y: 100, width: 824, height: 824), xRadius: 185, yRadius: 185)
     let shadow = NSShadow()
     shadow.shadowColor = NSColor(white: 0, alpha: 0.28)
     shadow.shadowOffset = NSSize(width: 0, height: -10)
     shadow.shadowBlurRadius = 24
     NSGraphicsContext.saveGraphicsState()
     shadow.set()
-    NSColor.white.setFill()
-    body.fill()
+    rgb(0xA3B8B4).setFill()
+    tile.fill()
     NSGraphicsContext.restoreGraphicsState()
-    NSGradient(starting: NSColor(srgbRed: 0.995, green: 0.99, blue: 0.97, alpha: 1),
-               ending: NSColor(srgbRed: 0.93, green: 0.915, blue: 0.88, alpha: 1))!.draw(in: body, angle: -90)
+    NSGradient(starting: rgb(0xB9CBC6), ending: rgb(0x8AA29C))!.draw(in: tile, angle: -90)
 
-    let ink = NSColor(srgbRed: 0.27, green: 0.28, blue: 0.31, alpha: 1)
-    let lines: [(y: CGFloat, end: CGFloat)] = [(690, 774), (610, 774), (530, 700), (450, 774), (370, 774), (290, 600)]
+    // Page.
+    let page = NSRect(x: 214, y: 190, width: 596, height: 650)
+    NSGraphicsContext.saveGraphicsState()
+    let pageShadow = NSShadow()
+    pageShadow.shadowColor = NSColor(srgbRed: 0.12, green: 0.2, blue: 0.18, alpha: 0.3)
+    pageShadow.shadowOffset = NSSize(width: 0, height: -8)
+    pageShadow.shadowBlurRadius = 18
+    pageShadow.set()
+    rgb(0xFFFDF8).setFill()
+    NSBezierPath(roundedRect: page, xRadius: 26, yRadius: 26).fill()
+    NSGraphicsContext.restoreGraphicsState()
+
+    // Text lines, one highlighted, with a note circle in the margin beside it.
+    let ink = rgb(0x4A5552)
+    let lines: [(y: CGFloat, end: CGFloat)] = [(740, 740), (670, 740), (590, 700), (510, 740), (440, 740), (370, 650), (300, 710)]
     for (i, line) in lines.enumerated() {
         if i == 2 {
-            NSColor(srgbRed: 1.0, green: 0.82, blue: 0.2, alpha: 1).setFill()
-            NSBezierPath(roundedRect: NSRect(x: 228, y: line.y - 24, width: line.end - 228 + 22, height: 74),
+            rgb(0xF5CD4C).setFill()
+            NSBezierPath(roundedRect: NSRect(x: 318, y: line.y - 26, width: line.end - 318 + 18, height: 70),
                          xRadius: 12, yRadius: 12).fill()
-            NSColor(srgbRed: 0.62, green: 0.42, blue: 0.0, alpha: 1).setFill()
-            NSBezierPath(ovalIn: NSRect(x: line.end + 36, y: line.y + 30, width: 30, height: 30)).fill()
+            let circle = NSBezierPath(ovalIn: NSRect(x: 244, y: line.y - 22, width: 60, height: 60))
+            rgb(0xF5CD4C).setFill()
+            circle.fill()
+            rgb(0x9C7A12).setStroke()
+            circle.lineWidth = 7
+            circle.stroke()
         }
         ink.setFill()
-        NSBezierPath(roundedRect: NSRect(x: 250, y: line.y, width: line.end - 250, height: 26), xRadius: 13, yRadius: 13).fill()
+        NSBezierPath(roundedRect: NSRect(x: 334, y: line.y, width: line.end - 334, height: 18), xRadius: 9, yRadius: 9).fill()
     }
     NSGraphicsContext.restoreGraphicsState()
     return rep.representation(using: .png, properties: [:])!

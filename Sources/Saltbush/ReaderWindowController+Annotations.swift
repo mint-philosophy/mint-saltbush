@@ -1,5 +1,5 @@
 import AppKit
-import FolioCore
+import SaltbushCore
 import PDFKit
 
 /// Highlights and notes. Every command acts on the current text selection first,

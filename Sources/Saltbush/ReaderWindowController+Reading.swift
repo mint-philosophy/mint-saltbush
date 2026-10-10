@@ -1,6 +1,6 @@
 import AppKit
 import CoreImage
-import FolioCore
+import SaltbushCore
 import PDFKit
 
 /// Reading aids: reference previews on hover, exporting highlights and notes, and page themes.
@@ -118,13 +118,15 @@ extension ReaderWindowController {
         pdfView.wantsLayer = true
         pdfView.layerUsesCoreImageFilters = true
         pdfView.contentFilters = Self.filters(for: theme)
-        // Night inverts everything, so start from a light surround to end up with a dark one.
-        pdfView.backgroundColor = theme == .night ? NSColor(white: 0.9, alpha: 1) : Self.surround
+        // Night inverts everything, so start from a light saltbush to end up with a dark one.
+        pdfView.backgroundColor = theme == .night ? NSColor(srgbRed: 0.80, green: 0.84, blue: 0.83, alpha: 1) : Self.surround
     }
 
+    /// Saltbush: a silvery grey-green, MINT's teal hue (#2ec4b6) with most of the colour taken out.
     static let surround = NSColor(name: nil) { appearance in
         appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-            ? NSColor(white: 0.14, alpha: 1) : NSColor(white: 0.87, alpha: 1)
+            ? NSColor(srgbRed: 0.176, green: 0.224, blue: 0.214, alpha: 1)   // #2D3937
+            : NSColor(srgbRed: 0.639, green: 0.722, blue: 0.706, alpha: 1)   // #A3B8B4
     }
 
     static func filters(for theme: Theme) -> [CIFilter] {

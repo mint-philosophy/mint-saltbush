@@ -2,11 +2,11 @@
 import PackageDescription
 
 let package = Package(
-    name: "Folio",
+    name: "Saltbush",
     platforms: [.macOS(.v14)],
     targets: [
-        .target(name: "FolioCore"),
-        .executableTarget(name: "Folio", dependencies: ["FolioCore"]),
-        .executableTarget(name: "folio-selftest", dependencies: ["FolioCore"]),
+        .target(name: "SaltbushCore"),
+        .executableTarget(name: "Saltbush", dependencies: ["SaltbushCore"]),
+        .executableTarget(name: "saltbush-selftest", dependencies: ["SaltbushCore"]),
     ]
 )

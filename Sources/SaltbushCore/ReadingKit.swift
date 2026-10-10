@@ -70,7 +70,7 @@ public enum ReadingKit {
         }
         let formatter = DateFormatter()
         formatter.dateStyle = .long
-        let header = "# \(title)\n\n*Highlights and notes exported from Folio, \(formatter.string(from: date)).*"
+        let header = "# \(title)\n\n*Highlights and notes exported from Saltbush, \(formatter.string(from: date)).*"
         return (([header] + blocks).joined(separator: "\n\n") + "\n", blocks.count)
     }
 }

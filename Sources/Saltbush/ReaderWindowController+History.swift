@@ -1,5 +1,5 @@
 import AppKit
-import FolioCore
+import SaltbushCore
 import PDFKit
 
 /// Back and forward through jumps: following links, going to a page, jumping from the

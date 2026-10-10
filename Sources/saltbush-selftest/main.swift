@@ -1,14 +1,14 @@
 // Writes highlights and notes into a copy of a PDF, reloads it, and reports what PDFKit sees.
-// Usage: folio-selftest <in.pdf> <out.pdf>
+// Usage: saltbush-selftest <in.pdf> <out.pdf>
 // Pair with scripts/check-annotations.py to confirm another engine (MuPDF) reads the same marks.
 import AppKit
-import FolioCore
+import SaltbushCore
 import PDFKit
 
 let args = CommandLine.arguments
 guard args.count == 3, let pdf = PDFDocument(url: URL(fileURLWithPath: args[1])), pdf.pageCount >= 2,
       let p0 = pdf.page(at: 0), let p1 = pdf.page(at: 1) else {
-    print("usage: folio-selftest <in.pdf with 2+ pages> <out.pdf>")
+    print("usage: saltbush-selftest <in.pdf with 2+ pages> <out.pdf>")
     exit(2)
 }
 

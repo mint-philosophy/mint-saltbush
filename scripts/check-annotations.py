@@ -1,7 +1,7 @@
 """Print each annotation as MuPDF sees it, with the text under its quads.
 
 Usage: python3 check-annotations.py <file.pdf>
-Used to confirm that highlights written by Folio render in other engines.
+Used to confirm that highlights written by Saltbush render in other engines.
 """
 import sys
 
