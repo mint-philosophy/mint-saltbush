@@ -1,14 +1,35 @@
 # Folio
 
-A small, fast PDF reader for macOS with only the tools Seth wants: reading, highlighting, and notes, all driven from the keyboard. It's built on Apple's PDFKit and saves standard PDF annotations, so highlights and notes made here appear in PDF Expert, Acrobat and Preview, and theirs appear here.
+A small, fast PDF reader for the Mac that does three things: reading, highlighting and notes. It's driven almost entirely from the keyboard, and it has no toolbars. A reader mode hides the title bar too, leaving just the page in an ordinary window.
+
+Folio is built on Apple's PDFKit and saves standard PDF annotations, so highlights and notes made in Folio show up in PDF Expert, Acrobat and Preview, and theirs show up in Folio.
 
 ## Install
 
+Requires macOS 14 (Sonoma) or later, on Apple Silicon or Intel.
+
+1. Download `Folio.zip` from the [latest release](../../releases/latest), unzip it, and drag `Folio.app` into Applications.
+2. Folio isn't signed with an Apple developer certificate, so the first time you open it macOS will say it can't verify the app. Click **Done**, then open **System Settings ▸ Privacy & Security**, scroll down, and click **Open Anyway** next to the message about Folio. You only need to do this once.
+
+   If you're comfortable with Terminal, this does the same thing:
+
+   ```bash
+   xattr -dr com.apple.quarantine /Applications/Folio.app
+   ```
+
+3. To open PDFs in Folio, right-click a PDF ▸ Open With ▸ Folio. To make it the default, select a PDF, choose File ▸ Get Info, set "Open with" to Folio, and click **Change All**.
+
+### Building from source
+
+You need the Xcode command-line tools (`xcode-select --install`); the full Xcode app isn't required.
+
 ```bash
-./scripts/build.sh --install
+git clone <this repository's URL> folio
+cd folio
+./scripts/build.sh --install     # builds and copies Folio.app to /Applications
 ```
 
-This builds a release binary, wraps it as `Folio.app`, signs it ad hoc, and copies it to `/Applications`. It needs only the Xcode command-line tools. To make Folio the default PDF app, select any PDF in Finder, choose Get Info, set "Open with" to Folio, and click Change All.
+`./scripts/package.sh` builds a universal app and zips it for a release.
 
 ## Keys
 
