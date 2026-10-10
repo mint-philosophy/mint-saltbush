@@ -57,8 +57,8 @@ enum Commands {
         Command("Half Screen Up", key: "u") { c, _ in c.scrollScreens(-0.5) },
         Command("Screen Down", key: " ") { c, _ in c.scrollScreens(1) },
         Command("Screen Up", hint: "⇧space") { c, _ in c.scrollScreens(-1) },
-        Command("Next Page", key: "J", menu: "Go") { c, n in c.goToPageIndex(c.currentPageIndex + (n ?? 1)) },
-        Command("Previous Page", key: "K", menu: "Go") { c, n in c.goToPageIndex(c.currentPageIndex - (n ?? 1)) },
+        Command("Next Page", key: "J", hint: "→", menu: "Go") { c, n in c.goToPageIndex(c.currentPageIndex + (n ?? 1)) },
+        Command("Previous Page", key: "K", hint: "←", menu: "Go") { c, n in c.goToPageIndex(c.currentPageIndex - (n ?? 1)) },
         Command("First Page", hint: "gg", menu: "Go", "\u{F700}") { c, _ in c.goToPageIndex(0) },
         Command("Last Page", key: "G", hint: "12G = page 12", menu: "Go", "\u{F701}") { c, n in
             c.goToPageIndex(n.map { $0 - 1 } ?? Int.max)
@@ -83,6 +83,7 @@ enum Commands {
         Command("Zoom Out", key: "-", menu: "View", "-") { c, _ in c.pdfView.zoomOut(nil) },
         Command("Fit Width", key: "=", menu: "View", "0") { c, _ in c.pdfView.autoScales = true },
         Command("Two-Page Spread", key: "s", menu: "View", "2") { c, _ in c.toggleSpread() },
+        Command("Continuous Scrolling", key: "w", menu: "View", "1") { c, _ in c.toggleContinuous() },
         Command("Full Screen", key: "f", hint: "⌃⌘F") { c, _ in c.window?.toggleFullScreen(nil) },
         Command("All Commands", key: "?", menu: "Help", "p", [.command, .shift]) { c, _ in c.showCommandPalette() },
     ]

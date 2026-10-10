@@ -8,7 +8,7 @@ import PDFKit
 /// Keys go through the same path as real typing (key monitor, then the window).
 ///
 /// Steps: key <char|esc|ret|sret|down|up|del|space|sspace> · type <text> · wait <s>
-///        select <page> <start> <length> · snap <png> · state · undo · quit
+///        select <page> <start> <length> · click <fx> <fy> · snap <png> · state · undo · quit
 extension ReaderWindowController {
     private static var started = false
 
@@ -41,6 +41,18 @@ extension ReaderWindowController {
             }
         case "snap": snapshot(to: arg)
         case "undo": undo?.undo()
+        case "click":
+            // click <fx> <fy>: a real click at a fraction of the page view's width and height.
+            let f = arg.split(separator: " ").compactMap { Double($0) }
+            let p = pdfView.convert(NSPoint(x: pdfView.bounds.width * f[0], y: pdfView.bounds.height * f[1]), to: nil)
+            for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+                if let e = NSEvent.mouseEvent(with: type, location: p, modifierFlags: [],
+                                              timestamp: ProcessInfo.processInfo.systemUptime,
+                                              windowNumber: window!.windowNumber, context: nil,
+                                              eventNumber: 0, clickCount: 1, pressure: 1) {
+                    NSApp.postEvent(e, atStart: false)
+                }
+            }
         case "undoinfo":
             append(log, "undoinfo manager=\(undo.map { "\(ObjectIdentifier($0))" } ?? "nil") window=\(window?.undoManager.map { "\(ObjectIdentifier($0))" } ?? "nil") canUndo=\(undo?.canUndo ?? false) level=\(undo?.groupingLevel ?? -1) name=\(undo?.undoActionName ?? "") edited=\(pdfDoc?.isDocumentEdited ?? false)")
         case "state": append(log, step + " " + stateJSON())
@@ -56,7 +68,8 @@ extension ReaderWindowController {
     private func sendKey(_ spec: String) {
         let named: [String: (String, UInt16, Bool)] = [
             "esc": ("\u{1b}", 53, false), "ret": ("\r", 36, false), "sret": ("\r", 36, true),
-            "down": ("\u{F701}", 125, false), "up": ("\u{F700}", 126, false), "del": ("\u{7f}", 51, false),
+            "down": ("\u{F701}", 125, false), "up": ("\u{F700}", 126, false),
+            "right": ("\u{F703}", 124, false), "left": ("\u{F702}", 123, false), "del": ("\u{7f}", 51, false),
             "space": (" ", 49, false), "sspace": (" ", 49, true),
         ]
         let (chars, code, shift) = named[spec] ?? (spec, 0, spec.uppercased() == spec && spec.lowercased() != spec)
@@ -72,6 +85,11 @@ extension ReaderWindowController {
                                            windowNumber: target.windowNumber, context: nil, characters: chars,
                                            charactersIgnoringModifiers: chars, isARepeat: false, keyCode: code)
         else { return }
+        if ProcessInfo.processInfo.environment["FOLIO_TEST_REAL"] != nil {
+            // Through the event queue, exactly like a physical keypress (monitors included).
+            NSApp.postEvent(event, atStart: false)
+            return
+        }
         if target === window, !(target.firstResponder is NSText), handleKey(event) { return }
         target.sendEvent(event)
     }
@@ -99,7 +117,9 @@ extension ReaderWindowController {
             }.first ?? "",
             "edited": pdfDoc?.isDocumentEdited ?? false,
             "scale": Double(pdfView.scaleFactor),
-            "spread": pdfView.displayMode == .twoUpContinuous,
+            "mode": ["single", "singleContinuous", "twoUp", "twoUpContinuous"][pdfView.displayMode.rawValue],
+            "fitScale": Double(pdfView.scaleFactorForSizeToFit),
+            "geometry": "win=\(window!.frame) content=\(window!.contentView!.frame) screen=\(window!.screen?.visibleFrame ?? .zero) pdfView=\(pdfView.frame) safe=\(pdfView.safeAreaInsets) svInsets=\(pdfView.documentView?.enclosingScrollView?.contentInsets ?? NSEdgeInsetsZero) svFrame=\(pdfView.documentView?.enclosingScrollView?.frame ?? .zero) auto=\(pdfView.documentView?.enclosingScrollView?.automaticallyAdjustsContentInsets ?? false) clip=\(pdfView.documentView?.enclosingScrollView?.contentView.bounds ?? .zero)",
             "marker": pdf?.page(at: currentPageIndex).flatMap { markerViews.object(forKey: $0) }.map { m in
                 "bounds=\(m.bounds) frame=\(m.frame) flipped=\(m.isFlipped) box=\(pdf!.page(at: currentPageIndex)!.bounds(for: pdfView.displayBox)) super=\(m.superview.map { String(describing: type(of: $0)) } ?? "-") superFlipped=\(m.superview?.isFlipped ?? false) transform=\(m.layer?.affineTransform() ?? .identity)"
             } ?? "none",

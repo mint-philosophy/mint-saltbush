@@ -12,11 +12,13 @@ This builds a release binary, wraps it as `Folio.app`, signs it ad hoc, and copi
 
 ## Keys
 
-Bare keys work whenever the page has focus. `?` opens a searchable list of every command with its keys, and Return runs the chosen one.
+Papers open one page per screen, fitted to the window. Bare keys are always on; there's nothing to enable. `?` opens a searchable list of every command with its keys, and Return runs the chosen one.
 
 | Keys | Action |
 |---|---|
-| `j` / `k` | scroll down / up (a count works: `5j`) |
+| → / ← | next / previous page, in every mode |
+| ↓ / ↑ | next / previous page (scrolls first if you've zoomed in) |
+| `j` / `k` | scroll down / up, turning the page at its edge (a count works: `5j`) |
 | `d` / `u` | half a screen down / up |
 | space / ⇧space | a screen down / up |
 | `J` / `K` | next / previous page |
@@ -34,6 +36,7 @@ Bare keys work whenever the page has focus. `?` opens a searchable list of every
 | `o` | recent documents |
 | `r` (⇧⌘R) | reader mode: no title bar, buttons or scroll bars, in an ordinary window |
 | `s` | two-page spread |
+| `w` (⌘1) | switch between one page per screen and continuous scrolling (remembered per file) |
 | `+` / `-` / `=` | zoom in / out / fit width |
 | `f` | full screen |
 | Esc | clear selection or close a panel |

@@ -5,16 +5,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.mainMenu = MenuBuilder.mainMenu()
     }
 
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        // Launched without a file: go straight to the open panel.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-            if NSDocumentController.shared.documents.isEmpty {
-                NSDocumentController.shared.openDocument(nil)
-            }
-        }
-    }
+    // AppKit asks for an untitled document only when Folio launches with no file
+    // and no restored windows; show the open panel instead.
+    func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool { true }
 
-    func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool { false }
+    func applicationOpenUntitledFile(_ sender: NSApplication) -> Bool {
+        NSDocumentController.shared.openDocument(nil)
+        return true
+    }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag { NSDocumentController.shared.openDocument(nil) }

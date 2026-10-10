@@ -26,6 +26,9 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
     private var searchAnchor: PDFSelection?
     private var overlay: NSView?
     private(set) var readerMode = false
+    // The page view sits below the title bar normally and under it in reader mode.
+    private var topBelowTitleBar: NSLayoutConstraint!
+    private var topAtWindowEdge: NSLayoutConstraint!
 
     var pdfDoc: PDFDoc? { document as? PDFDoc }
     var pdf: PDFDocument? { pdfView.document }
@@ -33,7 +36,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
 
     init() {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 860, height: 1000),
-                              styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                              styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                               backing: .buffered, defer: false)
         window.minSize = NSSize(width: 320, height: 240)
         window.center()
@@ -50,15 +53,18 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
         NSLayoutConstraint.activate([
             pdfView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             pdfView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            pdfView.topAnchor.constraint(equalTo: container.topAnchor),
             pdfView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
             hud.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -14),
             hud.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -14),
         ])
+        topBelowTitleBar = pdfView.topAnchor.constraint(equalTo: container.safeAreaLayoutGuide.topAnchor)
+        topAtWindowEdge = pdfView.topAnchor.constraint(equalTo: container.topAnchor)
+        topBelowTitleBar.isActive = true
 
         pdfView.controller = self
         pdfView.autoScales = true
-        pdfView.displayMode = .singlePageContinuous
+        // One page per screen by default; the arrow keys turn pages.
+        pdfView.displayMode = .singlePage
         pdfView.displaysPageBreaks = true
         pdfView.backgroundColor = NSColor(name: nil) { appearance in
             appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
@@ -144,6 +150,18 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
         case 49 where event.modifierFlags.contains(.shift): // Shift-Space
             scrollScreens(-1)
             return true
+        case 124: // Right arrow: always the next page
+            turnPage(forward: true)
+            return true
+        case 123: // Left arrow: always the previous page
+            turnPage(forward: false)
+            return true
+        case 125 where !isContinuous: // Down arrow: scroll a zoomed page, otherwise turn it
+            scrollLines(1)
+            return true
+        case 126 where !isContinuous: // Up arrow
+            scrollLines(-1)
+            return true
         default:
             break
         }
@@ -203,12 +221,18 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
         scroll(by: fraction * max(height - overlap, height * 0.5), animated: true)
     }
 
+    /// In one-page-per-screen mode, scrolling past the edge of a page turns it,
+    /// so j, k, space and the arrows read straight through a document.
     private func scroll(by dy: CGFloat, animated: Bool) {
         guard let sv = scrollView, let doc = sv.documentView else { return }
         let clip = sv.contentView
         var target = clip.bounds
         target.origin.y += doc.isFlipped ? dy : -dy
         target = clip.constrainBoundsRect(target)
+        if !isContinuous, abs(target.origin.y - clip.bounds.origin.y) < 1 {
+            turnPage(forward: dy > 0, landAtBottom: dy < 0)
+            return
+        }
         if animated {
             NSAnimationContext.runAnimationGroup { ctx in
                 ctx.duration = 0.12
@@ -217,6 +241,31 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
         } else {
             clip.setBoundsOrigin(target.origin)
         }
+        sv.reflectScrolledClipView(clip)
+    }
+
+    var isContinuous: Bool {
+        pdfView.displayMode == .singlePageContinuous || pdfView.displayMode == .twoUpContinuous
+    }
+
+    func turnPage(forward: Bool, landAtBottom: Bool = false) {
+        if forward {
+            guard pdfView.canGoToNextPage else { return }
+            pdfView.goToNextPage(nil)
+        } else {
+            guard pdfView.canGoToPreviousPage else { return }
+            pdfView.goToPreviousPage(nil)
+            // Scrolling up off the top of a zoomed page should arrive at the bottom of the one before.
+            if landAtBottom { DispatchQueue.main.async { self.scrollToBottom() } }
+        }
+    }
+
+    private func scrollToBottom() {
+        guard let sv = scrollView, let doc = sv.documentView else { return }
+        let clip = sv.contentView
+        var target = clip.bounds
+        target.origin.y = doc.isFlipped ? doc.bounds.maxY : doc.bounds.minY
+        clip.setBoundsOrigin(clip.constrainBoundsRect(target).origin)
         sv.reflectScrolledClipView(clip)
     }
 
@@ -259,9 +308,9 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
     func applyReaderMode(_ on: Bool) {
         readerMode = on
         guard let window else { return }
-        if !window.styleMask.contains(.fullScreen) {
-            if on { window.styleMask.insert(.fullSizeContentView) } else { window.styleMask.remove(.fullSizeContentView) }
-        }
+        // The window never changes size; the pages simply extend into the title bar's space.
+        topBelowTitleBar.isActive = !on
+        topAtWindowEdge.isActive = on
         window.titlebarAppearsTransparent = on
         window.titleVisibility = on ? .hidden : .visible
         for button: NSWindow.ButtonType in [.closeButton, .miniaturizeButton, .zoomButton] {
@@ -271,11 +320,34 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
             sv.scrollerStyle = .overlay
             sv.hasVerticalScroller = !on
             sv.hasHorizontalScroller = !on
+            sv.automaticallyAdjustsContentInsets = false
+            sv.contentInsets = NSEdgeInsetsZero
+        }
+        refit()
+    }
+
+    /// Re-applies fit-to-window after the visible area changes size.
+    private func refit() {
+        guard pdfView.autoScales else { return }
+        DispatchQueue.main.async {
+            self.pdfView.autoScales = false
+            self.pdfView.autoScales = true
         }
     }
 
     func toggleSpread() {
-        pdfView.displayMode = pdfView.displayMode == .twoUpContinuous ? .singlePageContinuous : .twoUpContinuous
+        let spread = pdfView.displayMode == .twoUp || pdfView.displayMode == .twoUpContinuous
+        setDisplay(spread: !spread, continuous: isContinuous)
+    }
+
+    func toggleContinuous() {
+        let spread = pdfView.displayMode == .twoUp || pdfView.displayMode == .twoUpContinuous
+        setDisplay(spread: spread, continuous: !isContinuous)
+        hud.show(isContinuous ? "Continuous scrolling" : "One page per screen")
+    }
+
+    private func setDisplay(spread: Bool, continuous: Bool) {
+        pdfView.displayMode = spread ? (continuous ? .twoUpContinuous : .twoUp) : (continuous ? .singlePageContinuous : .singlePage)
         pdfView.autoScales = true
     }
 
@@ -483,7 +555,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
             "y": Double(destination.point.y),
             "scale": Double(pdfView.scaleFactor),
             "auto": pdfView.autoScales,
-            "spread": pdfView.displayMode == .twoUpContinuous,
+            "mode": pdfView.displayMode.rawValue,
         ] as [String: Any]
         UserDefaults.standard.set(all, forKey: "positions")
     }
@@ -492,7 +564,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
         guard let url = pdfDoc?.fileURL, let pdf,
               let entry = UserDefaults.standard.dictionary(forKey: "positions")?[url.path] as? [String: Any],
               let index = entry["page"] as? Int, index < pdf.pageCount, let page = pdf.page(at: index) else { return }
-        if entry["spread"] as? Bool == true { pdfView.displayMode = .twoUpContinuous }
+        if let raw = entry["mode"] as? Int, let mode = PDFDisplayMode(rawValue: raw) { pdfView.displayMode = mode }
         if entry["auto"] as? Bool == false, let scale = entry["scale"] as? Double { pdfView.scaleFactor = scale }
         let x = entry["x"] as? Double ?? 0, y = entry["y"] as? Double ?? 0
         if abs(x) < 1e6, abs(y) < 1e6 {
