@@ -81,7 +81,7 @@ enum Commands {
         Command("Reader Mode", key: "r", menu: "View", "r", [.command, .shift]) { c, _ in c.toggleReaderMode() },
         Command("Zoom In", key: "+", menu: "View", "=") { c, _ in c.pdfView.zoomIn(nil) },
         Command("Zoom Out", key: "-", menu: "View", "-") { c, _ in c.pdfView.zoomOut(nil) },
-        Command("Fit Width", key: "=", menu: "View", "0") { c, _ in c.pdfView.autoScales = true },
+        Command("Fit to Window", key: "=", menu: "View", "0") { c, _ in c.pdfView.autoScales = true },
         Command("Two-Page Spread", key: "s", menu: "View", "2") { c, _ in c.toggleSpread() },
         Command("Continuous Scrolling", key: "w", menu: "View", "1") { c, _ in c.toggleContinuous() },
         Command("Full Screen", key: "f", hint: "⌃⌘F") { c, _ in c.window?.toggleFullScreen(nil) },

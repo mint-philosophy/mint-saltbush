@@ -37,7 +37,7 @@ Papers open one page per screen, fitted to the window. Bare keys are always on; 
 | `r` (⇧⌘R) | reader mode: no title bar, buttons or scroll bars, in an ordinary window |
 | `s` | two-page spread |
 | `w` (⌘1) | switch between one page per screen and continuous scrolling (remembered per file) |
-| `+` / `-` / `=` | zoom in / out / fit width |
+| `+` / `-` / `=` | zoom in / out / fit to window |
 | `f` | full screen |
 | Esc | clear selection or close a panel |
 | ⌘Z | undo any highlight, note or colour change |
