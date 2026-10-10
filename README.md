@@ -9,7 +9,14 @@ Folio is built on Apple's PDFKit and saves standard PDF annotations, so highligh
 Requires macOS 14 (Sonoma) or later, on Apple Silicon or Intel.
 
 1. Download `Folio.zip` from the [latest release](../../releases/latest), unzip it, and drag `Folio.app` into Applications.
-2. Open it. Folio is signed and notarized by Apple, so it opens like any other app.
+2. The current download isn't yet notarized by Apple, so the first time you open it macOS will say it can't verify the app. Click **Done**, then open **System Settings ▸ Privacy & Security**, scroll down, and click **Open Anyway** next to the message about Folio. You only need to do this once.
+
+   If you're comfortable with Terminal, this does the same thing:
+
+   ```bash
+   xattr -dr com.apple.quarantine /Applications/Folio.app
+   ```
+
 3. To open PDFs in Folio, right-click a PDF ▸ Open With ▸ Folio. To make it the default, select a PDF, choose File ▸ Get Info, set "Open with" to Folio, and click **Change All**.
 
 ### Building from source
