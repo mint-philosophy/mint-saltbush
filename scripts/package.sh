@@ -3,8 +3,11 @@
 # With a "Developer ID Application" certificate in the keychain and a notarytool profile
 # named "folio-notary", the app is signed, notarized by Apple and stapled, so it opens
 # without warnings. Otherwise it falls back to an ad hoc signature.
+# --no-notarize signs with the Developer ID but skips Apple's check (for a quick interim release).
 # Output: build/Folio.zip
 set -euo pipefail
+NOTARIZE=1
+[[ "${1:-}" == "--no-notarize" ]] && NOTARIZE=0
 cd "${0:A:h}/.."
 
 swift build -c release --product Folio
@@ -19,10 +22,12 @@ IDENTITY=$(security find-identity -v -p codesigning | awk -F'"' '/Developer ID A
 if [[ -n "$IDENTITY" ]]; then
   echo "Signing with $IDENTITY"
   codesign --force --options runtime --timestamp --sign "$IDENTITY" "$APP"
-  ditto -c -k --keepParent "$APP" build/Folio-notarize.zip
-  xcrun notarytool submit build/Folio-notarize.zip --keychain-profile folio-notary --wait
-  xcrun stapler staple "$APP"
-  spctl --assess --type execute --verbose "$APP"
+  if (( NOTARIZE )); then
+    ditto -c -k --keepParent "$APP" build/Folio-notarize.zip
+    xcrun notarytool submit build/Folio-notarize.zip --keychain-profile folio-notary --wait
+    xcrun stapler staple "$APP"
+    spctl --assess --type execute --verbose "$APP"
+  fi
 else
   echo "No Developer ID certificate found; signing ad hoc (users will see a Gatekeeper warning)."
   codesign --force --sign - "$APP"
