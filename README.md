@@ -11,14 +11,7 @@ Saltbush is built on Apple's PDFKit and saves standard PDF annotations, so highl
 Requires macOS 14 (Sonoma) or later, on Apple Silicon or Intel.
 
 1. Download `Saltbush.zip` from the [latest release](../../releases/latest), unzip it, and drag `Saltbush.app` into Applications.
-2. The current download isn't yet notarized by Apple, so the first time you open it macOS will say it can't verify the app. Click **Done**, then open **System Settings ▸ Privacy & Security**, scroll down, and click **Open Anyway** next to the message about Saltbush. You only need to do this once.
-
-   If you're comfortable with Terminal, this does the same thing:
-
-   ```bash
-   xattr -dr com.apple.quarantine /Applications/Saltbush.app
-   ```
-
+2. Open it. Saltbush is signed and notarized by Apple, so it opens like any other app.
 3. To open PDFs in Saltbush, right-click a PDF ▸ Open With ▸ Saltbush. To make it the default, select a PDF, choose File ▸ Get Info, set "Open with" to Saltbush, and click **Change All**.
 
 ### Building from source
