@@ -92,6 +92,21 @@ extension ReaderWindowController {
             if arg != "click" {
                 append(log, "badge cursor=\(NSCursor.current == .pointingHand ? "pointingHand" : NSCursor.current == .iBeam ? "iBeam" : "other")")
             }
+        case "rightbadge":
+            // rightbadge <item title>: right-click the first note circle and choose a menu item.
+            guard let page = pdfView.currentPage,
+                  let a = page.annotations.first(where: { AnnotationKit.hasNote($0) }),
+                  let r = AnnotationKit.noteBadgeRect(for: a, on: page),
+                  let e = NSEvent.mouseEvent(with: .rightMouseDown,
+                                             location: pdfView.convert(pdfView.convert(NSPoint(x: r.midX, y: r.midY), from: page), to: nil),
+                                             modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                                             windowNumber: window!.windowNumber, context: nil, eventNumber: 0,
+                                             clickCount: 1, pressure: 1),
+                  let menu = pdfView.menu(for: e) else { append(log, "rightbadge none"); break }
+            append(log, "rightbadge items=\(menu.items.map(\.title).filter { !$0.isEmpty })")
+            if let item = menu.items.first(where: { $0.title == arg }), let action = item.action {
+                NSApp.sendAction(action, to: item.target, from: item)
+            }
         case "menu":
             // menu <title>: report whether a Folio menu command is enabled right now.
             let item = NSMenuItem(title: arg, action: #selector(performCommand(_:)), keyEquivalent: "")

@@ -49,6 +49,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
     var noteEditor: NoteEditor?
     var lastRecoloured: (targets: [PageAnnotation], time: Date)?
     var contextPoint: NSPoint?
+    var contextTarget: PageAnnotation?
     /// The highlight just made with h, so that n, x and c apply to it without reselecting.
     var recentHighlight: PageAnnotation?
     private var keyMonitor: Any?

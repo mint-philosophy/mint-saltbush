@@ -46,7 +46,7 @@ The usual flow: select a passage, press `h`, then `n`, type, and press Esc. The 
 
 The note editor behaves like any Mac text field: Return starts a new line, ⌥ and ⌘ with the arrows move by word and line, and Folio's own shortcuts are off while you type. Esc or ⌘Return saves and closes, as does clicking elsewhere. Clearing a standalone note's text deletes it.
 
-A highlight with a note gets a circle in the left margin, level with its first line; click the circle to open the note. Clicking a highlight selects it. There's no margin bar, and the page layout never shifts. The pointer is an I-beam over pages and a hand over links and note circles.
+A highlight with a note gets a circle in the left margin, level with its first line; click the circle to open the note, or right-click it to edit or delete the note (keeping the highlight) or to remove both. Right-clicking a standalone note offers Edit and Delete. Clicking a highlight selects it. There's no margin bar, and the page layout never shifts. The pointer is an I-beam over pages and a hand over links and note circles.
 
 Folio remembers your position, zoom and spread for each file, and remembers whether reader mode was on. Edits autosave in place through macOS document saving, which writes to a temporary file and swaps it in, so a crash mid-save can't corrupt the PDF.
 

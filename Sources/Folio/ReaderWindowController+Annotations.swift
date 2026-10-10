@@ -162,25 +162,48 @@ extension ReaderWindowController {
 
     // MARK: Context menu
 
+    /// Right-click: note circles and sticky notes offer Edit and Delete; selected text and
+    /// highlights offer highlighting and note actions; empty page offers a note there.
     func contextMenu(for event: NSEvent) -> NSMenu? {
         let point = pdfView.convert(event.locationInWindow, from: nil)
         contextPoint = point
-        if textSelection == nil, let hit = annotation(atViewPoint: point), AnnotationKit.isMarkup(hit.annotation) {
-            select(hit.annotation, on: hit.page)
-        }
+        contextTarget = nil
         let menu = NSMenu()
         func add(_ title: String, _ action: Selector) {
             menu.addItem(withTitle: title, action: action, keyEquivalent: "").target = self
         }
+
+        if let page = pdfView.page(for: point, nearest: false),
+           let a = AnnotationKit.noteBadge(at: pdfView.convert(point, to: page), on: page) {
+            contextTarget = PageAnnotation(a, page)
+            add("Edit Note", #selector(contextEditTarget))
+            add("Delete Note", #selector(contextDeleteNote))
+            menu.addItem(.separator())
+            add("Remove Highlight and Note", #selector(contextRemoveTarget))
+            return menu
+        }
+        if let hit = annotation(atViewPoint: point), AnnotationKit.isSticky(hit.annotation) {
+            contextTarget = hit
+            add("Edit Note", #selector(contextEditTarget))
+            add("Delete Note", #selector(contextRemoveTarget))
+            return menu
+        }
+
+        if textSelection == nil, let hit = annotation(atViewPoint: point), AnnotationKit.isMarkup(hit.annotation) {
+            select(hit.annotation, on: hit.page)
+        }
         if textSelection != nil {
+            let touching = annotationsTouchingSelection()
             add("Highlight", #selector(contextHighlight))
-            add(annotationsTouchingSelection().isEmpty ? "Add Note" : "Edit Note", #selector(contextNote))
-            if !annotationsTouchingSelection().isEmpty { add("Remove Highlight", #selector(contextRemove)) }
+            add(touching.isEmpty || !touching.contains { AnnotationKit.hasNote($0.annotation) } ? "Add Note" : "Edit Note",
+                #selector(contextNote))
+            if let noted = touching.first(where: { AnnotationKit.hasNote($0.annotation) }) {
+                contextTarget = noted
+                add("Delete Note", #selector(contextDeleteNote))
+            }
+            if !touching.isEmpty { add("Remove Highlight", #selector(contextRemove)) }
             menu.addItem(.separator())
             menu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "")
-        } else if let hit = annotation(atViewPoint: point), AnnotationKit.isSticky(hit.annotation) {
-            add("Edit Note", #selector(contextEditSticky))
-            add("Delete Note", #selector(contextDeleteSticky))
         } else {
             add("Add Note Here", #selector(contextAddSticky))
         }
@@ -191,11 +214,13 @@ extension ReaderWindowController {
     @objc private func contextNote() { addOrEditNote() }
     @objc private func contextRemove() { removeAnnotations() }
     @objc private func contextAddSticky() { if let p = contextPoint { addStickyNote(atViewPoint: p) } }
-    @objc private func contextEditSticky() {
-        if let p = contextPoint, let hit = annotation(atViewPoint: p) { editNote(hit.annotation, on: hit.page) }
+    @objc private func contextEditTarget() { if let t = contextTarget { editNote(t.annotation, on: t.page) } }
+    /// Deletes the note but keeps the highlight.
+    @objc private func contextDeleteNote() {
+        if let t = contextTarget { setNote(t.annotation, on: t.page, to: nil) }
     }
-    @objc private func contextDeleteSticky() {
-        if let p = contextPoint, let hit = annotation(atViewPoint: p) { replace([hit], with: [], name: "Delete Note") }
+    @objc private func contextRemoveTarget() {
+        if let t = contextTarget { replace([t], with: [], name: AnnotationKit.isSticky(t.annotation) ? "Delete Note" : "Remove Highlight") }
     }
 
     // MARK: Undoable edits
