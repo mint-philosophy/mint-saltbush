@@ -417,7 +417,7 @@ final class NoteMarkerView: NSView {
 final class ShortcutsView: NSVisualEffectView {
     private static let layout: [[(group: String, titles: [String])]] = [
         [("Move around", ["Next Page", "Previous Page", "Screen Down", "Screen Up", "First Page", "Last Page",
-                          "Go to Page…", "Back", "Forward"]),
+                          "Go to Page…", "Previous Location", "Next Location"]),
          ("Search", ["Find…", "Find Next", "Find Previous"])],
         [("Highlights and notes", ["Highlight", "Add or Edit Note", "Remove Highlight", "Change Colour",
                                    "Copy Highlights and Notes", "Export Highlights and Notes…"]),

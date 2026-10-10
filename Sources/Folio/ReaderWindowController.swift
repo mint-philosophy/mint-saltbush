@@ -74,6 +74,8 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
     var previewWork: DispatchWorkItem?
     var linkPopover: NSPopover?
     var pasteboard = NSPasteboard.general
+    var backStack: [Location] = []
+    var forwardStack: [Location] = []
     private var keyMonitor: Any?
     private var mouseMonitor: Any?
     private var mouseDownPoint: NSPoint?
@@ -185,6 +187,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
             guard let self, event.window === self.window else { return event }
             if event.type == .leftMouseDown {
                 self.mouseDownPoint = event.locationInWindow
+                self.recordJumpIfLink(atWindowPoint: event.locationInWindow)
                 if let overlay = self.overlay,
                    !overlay.frame.contains(overlay.superview!.convert(event.locationInWindow, from: nil)) {
                     self.dismissOverlay()
@@ -336,6 +339,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
     }
 
     func goToPageIndex(_ i: Int) {
+        recordJump()
         guard let pdf, pdf.pageCount > 0, let page = pdf.page(at: min(max(i, 0), pdf.pageCount - 1)) else { return }
         pdfView.go(to: page)
     }
@@ -483,6 +487,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
     // MARK: Find and go to page
 
     func beginFind() {
+        recordJump()
         searchAnchor = pdfView.currentPage?.selection(for: NSRange(location: 0, length: 1))
         // Return and ⇧Return step through matches; Esc closes and leaves the match selected for h.
         showPrompt("Find", initial: lastQuery, staysOpen: true, onChange: { [weak self] query in
@@ -576,7 +581,10 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
                 if let pageIndex, pageIndex <= current { selected = items.count }
                 let title = String(repeating: "     ", count: depth) + (child.label ?? "Untitled")
                 items.append(PaletteView.Item(title: title, detail: pageIndex.map(pageLabel) ?? "") { [weak self] in
-                    if let destination { self?.pdfView.go(to: destination) }
+                    if let destination {
+                        self?.recordJump()
+                        self?.pdfView.go(to: destination)
+                    }
                 })
                 walk(child, depth: depth + 1)
             }

@@ -153,6 +153,7 @@ extension ReaderWindowController {
     }
 
     func revealAnnotation(_ a: PDFAnnotation, on page: PDFPage) {
+        recordJump()
         pdfView.go(to: a.bounds, on: page)
         if AnnotationKit.isMarkup(a) { select(a, on: page) }
         if AnnotationKit.isSticky(a) || !(a.contents ?? "").trimmed.isEmpty {

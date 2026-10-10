@@ -42,7 +42,7 @@ Papers open one page per screen, fitted to the window. Bare keys are always on; 
 | space / ⇧space | a screen down / up, turning the page at its edge |
 | ⌘↑ / ⌘↓ | first / last page |
 | `g` (⌥⌘G) | go to page; accepts printed page numbers such as `245` |
-| ⌘[ / ⌘] | back / forward after a jump |
+| ⌘[ / ⌘] | previous / next location: back to where you were before following a link, going to a page, jumping from the contents or notes list, or searching (page turns don't count) |
 | `s` (⌘F) | search as you type; all-lowercase ignores case. Return / ⇧Return go to the next / previous match; Esc closes and leaves the match selected |
 | ⌘G / ⇧⌘G | next / previous match after closing search |
 | `h` | highlight the selection; overlapping highlights merge |

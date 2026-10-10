@@ -126,6 +126,16 @@ extension ReaderWindowController {
                let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff) {
                 try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: arg))
             }
+        case "cmd":
+            // cmd <title>: run a command by its title, as its menu shortcut would.
+            if let command = Commands.all.first(where: { $0.title == arg }) { command.run(self) } else { append(log, "no command \(arg)") }
+        case "clicklink":
+            // clicklink: click the first link on the current page (records the jump, then follows it).
+            if let page = pdfView.currentPage, let link = page.annotations.first(where: { AnnotationKit.kind($0) == "link" }),
+               let d = ReadingKit.internalDestination(of: link) {
+                recordJumpIfLink(atWindowPoint: pdfView.convert(pdfView.convert(NSPoint(x: link.bounds.midX, y: link.bounds.midY), from: page), to: nil))
+                pdfView.go(to: d)
+            }
         case "menu":
             // menu <title>: report whether a Folio menu command is enabled right now.
             let item = NSMenuItem(title: arg, action: #selector(performCommand(_:)), keyEquivalent: "")
