@@ -75,6 +75,18 @@ A highlight with a note gets a circle in the left margin, level with its first l
 
 Folio remembers your position, zoom and spread for each file, and remembers whether reader mode was on. Edits autosave in place through macOS document saving, which writes to a temporary file and swaps it in, so a crash mid-save can't corrupt the PDF.
 
+## Privacy
+
+Folio makes no network connections and collects nothing. Your PDFs, highlights and notes stay in the PDF files on your Mac. The only thing that reaches the internet is a web link you click inside a PDF, which opens in your browser.
+
+## Feedback
+
+Bug reports and suggestions are welcome in [Issues](../../issues).
+
+## License
+
+MIT; see [LICENSE](LICENSE). PDF Expert, Acrobat and Preview are trademarks of their respective owners and are mentioned only to describe compatibility.
+
 ## Layout
 
 - `Sources/FolioCore/AnnotationKit.swift`: creating and reading highlights and notes. No UI.
