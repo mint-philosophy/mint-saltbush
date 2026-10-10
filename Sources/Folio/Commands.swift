@@ -32,6 +32,15 @@ struct Command {
         return parts.joined(separator: "    ")
     }
 
+    /// The key you'd actually press: the bare key where there is one, else the menu shortcut.
+    var primaryHint: String {
+        var parts: [String] = []
+        if let key { parts.append(key == " " ? "space" : key) }
+        if let extraHint { parts.append(extraHint) }
+        if parts.isEmpty, !equivalent.isEmpty { parts.append(Self.describe(equivalent, modifiers)) }
+        return parts.joined(separator: "   ")
+    }
+
     static func describe(_ key: String, _ mods: NSEvent.ModifierFlags) -> String {
         var s = ""
         if mods.contains(.control) { s += "⌃" }
@@ -69,9 +78,7 @@ enum Commands {
         Command("Contents…", key: "t", menu: "Go", "t", [.command, .option]) { c, _ in c.showOutline() },
         Command("Highlights and Notes…", key: ";", menu: "Go", "a", [.command, .option]) { c, _ in c.showAnnotations() },
         Command("Recent Documents…", key: "o", menu: "File", "o", [.command, .shift]) { c, _ in c.showRecent() },
-        Command("Find…", key: "s", hint: "then Return / ⇧Return for next / previous", menu: "Edit", "f") { c, _ in
-            c.beginFind()
-        },
+        Command("Find…", key: "s", menu: "Edit", "f") { c, _ in c.beginFind() },
         Command("Find Next", menu: "Edit", "g") { c, _ in c.findNext(backwards: false) },
         Command("Find Previous", menu: "Edit", "g", [.command, .shift]) { c, _ in c.findNext(backwards: true) },
         Command("Highlight", key: "h", menu: "Annotate", "h", [.control, .command]) { c, _ in c.highlightSelection() },
@@ -87,7 +94,8 @@ enum Commands {
         Command("Two-Page Spread", menu: "View", "2") { c, _ in c.toggleSpread() },
         Command("Continuous Scrolling", key: "w", menu: "View", "1") { c, _ in c.toggleContinuous() },
         Command("Full Screen", key: "f", hint: "⌃⌘F") { c, _ in c.window?.toggleFullScreen(nil) },
-        Command("All Commands", key: "?", menu: "Help", "p", [.command, .shift]) { c, _ in c.showCommandPalette() },
+        Command("Keyboard Shortcuts", key: "?", menu: "Help", "/") { c, _ in c.showShortcuts() },
+        Command("All Commands", menu: "Help", "p", [.command, .shift]) { c, _ in c.showCommandPalette() },
     ]
 
     static let byKey: [String: Int] = {

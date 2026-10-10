@@ -411,3 +411,123 @@ final class NoteMarkerView: NSView {
         }
     }
 }
+
+/// Every keyboard shortcut on one sheet, grouped. Shown on first launch and with ? or ⌘/.
+/// Keys come from the command table, so the sheet stays in step with the app.
+final class ShortcutsView: NSVisualEffectView {
+    private static let layout: [[(group: String, titles: [String])]] = [
+        [("Move around", ["Next Page", "Previous Page", "Scroll Down", "Scroll Up", "Half Screen Down", "Half Screen Up",
+                          "Screen Down", "Screen Up", "First Page", "Last Page", "Go to Page…", "Back", "Forward"]),
+         ("Search", ["Find…", "Find Next", "Find Previous"])],
+        [("Highlights and notes", ["Highlight", "Add or Edit Note", "Remove Highlight", "Change Colour"]),
+         ("Lists", ["Contents…", "Highlights and Notes…", "Recent Documents…", "All Commands"]),
+         ("View", ["Reader Mode", "Continuous Scrolling", "Two-Page Spread", "Zoom In", "Zoom Out", "Fit to Window",
+                   "Full Screen", "Keyboard Shortcuts"])],
+    ]
+
+    init() {
+        super.init(frame: .zero)
+        material = .popover
+        blendingMode = .withinWindow
+        state = .active
+        wantsLayer = true
+        layer?.cornerRadius = 14
+        layer?.masksToBounds = true
+
+        let byTitle = Dictionary(Commands.all.map { ($0.title, $0) }, uniquingKeysWith: { a, _ in a })
+        let title = NSTextField(labelWithString: "Keyboard shortcuts")
+        title.font = .systemFont(ofSize: 20, weight: .semibold)
+        let subtitle = NSTextField(labelWithString: "Press ? at any time to see this again. Press any key to close.")
+        subtitle.font = .systemFont(ofSize: 12)
+        subtitle.textColor = .secondaryLabelColor
+
+        let columns = Self.layout.map { groups -> NSStackView in
+            let column = NSStackView(views: groups.map { Self.section($0.group, $0.titles.compactMap { byTitle[$0] }) })
+            column.orientation = .vertical
+            column.alignment = .leading
+            column.spacing = 18
+            return column
+        }
+        let body = NSStackView(views: columns)
+        body.orientation = .horizontal
+        body.alignment = .top
+        body.distribution = .fillEqually
+        body.spacing = 36
+
+        let tips = NSTextField(wrappingLabelWithString:
+            "Select text, then press h to highlight it and n to add a note. In a note, Return starts a new line and Esc saves. "
+            + "In search, Return and ⇧Return step through matches; Esc closes and leaves the match selected. "
+            + "Click a note's circle in the margin to open it; right-click it to delete.")
+        tips.font = .systemFont(ofSize: 12)
+        tips.textColor = .secondaryLabelColor
+
+        let stack = NSStackView(views: [title, subtitle, body, tips])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 10
+        stack.setCustomSpacing(22, after: subtitle)
+        stack.setCustomSpacing(22, after: body)
+        stack.edgeInsets = NSEdgeInsets(top: 26, left: 30, bottom: 26, right: 30)
+        stack.translatesAutoresizingMaskIntoConstraints = false
+
+        let document = FlippedView()
+        document.translatesAutoresizingMaskIntoConstraints = false
+        document.addSubview(stack)
+        let scroll = NSScrollView()
+        scroll.drawsBackground = false
+        scroll.hasVerticalScroller = true
+        scroll.autohidesScrollers = true
+        scroll.documentView = document
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(scroll)
+        NSLayoutConstraint.activate([
+            scroll.leadingAnchor.constraint(equalTo: leadingAnchor),
+            scroll.trailingAnchor.constraint(equalTo: trailingAnchor),
+            scroll.topAnchor.constraint(equalTo: topAnchor),
+            scroll.bottomAnchor.constraint(equalTo: bottomAnchor),
+            document.leadingAnchor.constraint(equalTo: scroll.contentView.leadingAnchor),
+            document.trailingAnchor.constraint(equalTo: scroll.contentView.trailingAnchor),
+            document.topAnchor.constraint(equalTo: scroll.contentView.topAnchor),
+            stack.leadingAnchor.constraint(equalTo: document.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: document.trailingAnchor),
+            stack.topAnchor.constraint(equalTo: document.topAnchor),
+            stack.bottomAnchor.constraint(equalTo: document.bottomAnchor),
+            body.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -60),
+            tips.widthAnchor.constraint(equalTo: body.widthAnchor),
+        ])
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError() }
+
+    private static func section(_ name: String, _ commands: [Command]) -> NSView {
+        let header = NSTextField(labelWithString: name.uppercased())
+        header.font = .systemFont(ofSize: 11, weight: .semibold)
+        header.textColor = .tertiaryLabelColor
+        let rows = commands.map { cmd -> [NSView] in
+            let keys = NSTextField(labelWithString: cmd.primaryHint)
+            keys.font = .systemFont(ofSize: 13, weight: .semibold)
+            let label = NSTextField(labelWithString: cmd.title.replacingOccurrences(of: "…", with: ""))
+            label.font = .systemFont(ofSize: 13)
+            label.textColor = .secondaryLabelColor
+            return [keys, label]
+        }
+        let grid = NSGridView(views: rows)
+        grid.rowSpacing = 5
+        grid.columnSpacing = 14
+        grid.column(at: 0).width = 150
+        // Fixed row heights; otherwise the grid hands spare height to its first row.
+        for i in 0..<grid.numberOfRows { grid.row(at: i).height = 20 }
+        grid.yPlacement = .center
+        grid.setContentHuggingPriority(.required, for: .vertical)
+        let section = NSStackView(views: [header, grid])
+        section.orientation = .vertical
+        section.alignment = .leading
+        section.spacing = 8
+        return section
+    }
+}
+
+private final class FlippedView: NSView {
+    override var isFlipped: Bool { true }
+}

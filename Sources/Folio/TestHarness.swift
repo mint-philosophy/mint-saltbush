@@ -183,7 +183,7 @@ extension ReaderWindowController {
             "firstResponder": window?.firstResponder.map { String(describing: type(of: $0)) } ?? "nil",
             "noteEditorOpen": noteEditor != nil,
             "overlay": window?.contentView?.subviews.compactMap { v -> String? in
-                v is PaletteView || v is PromptBar ? String(describing: type(of: v)) : nil
+                v is PaletteView || v is PromptBar || v is ShortcutsView ? String(describing: type(of: v)) : nil
             }.first ?? "",
             "edited": pdfDoc?.isDocumentEdited ?? false,
             "scale": Double(pdfView.scaleFactor),

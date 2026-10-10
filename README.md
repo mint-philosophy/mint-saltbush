@@ -33,7 +33,7 @@ cd folio
 
 ## Keys
 
-Papers open one page per screen, fitted to the window. Bare keys are always on; there's nothing to enable. `?` opens a searchable list of every command with its keys, and Return runs the chosen one.
+Papers open one page per screen, fitted to the window. Bare keys are always on; there's nothing to enable. The first time Folio opens it shows a sheet of every shortcut; press `?` (or ⌘/) to see it again. ⇧⌘P opens a searchable list of commands that runs whichever you pick.
 
 | Keys | Action |
 |---|---|
@@ -60,6 +60,8 @@ Papers open one page per screen, fitted to the window. Bare keys are always on; 
 | `w` (⌘1) | switch between one page per screen and continuous scrolling (remembered per file) |
 | `+` / `-` / `=` | zoom in / out / fit to window |
 | `f` | full screen |
+| `?` (⌘/) | show all keyboard shortcuts |
+| ⇧⌘P | searchable list of commands |
 | Esc | clear selection or close a panel |
 | ⌘Z | undo any highlight, note or colour change |
 
@@ -74,7 +76,7 @@ Folio remembers your position, zoom and spread for each file, and remembers whet
 ## Layout
 
 - `Sources/FolioCore/AnnotationKit.swift`: creating and reading highlights and notes. No UI.
-- `Sources/Folio/Commands.swift`: every command in one table. Keys, menus and the `?` palette are all generated from it.
+- `Sources/Folio/Commands.swift`: every command in one table. Keys, menus, the shortcuts sheet and the command palette are all generated from it.
 - `Sources/Folio/ReaderWindowController*.swift`: the window, keyboard handling, find, palettes, reader mode, annotation editing.
 - `Sources/Folio/Overlays.swift`: the HUD, find bar, palette, note editor and note dots.
 - `Sources/Folio/TestHarness.swift`: debug-only scripted driver (see below). Not compiled into release builds.

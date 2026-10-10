@@ -129,6 +129,11 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
         DispatchQueue.main.async {
             self.restorePosition()
             self.window?.makeFirstResponder(self.pdfView)
+            // The first time Folio opens, show what the keys do.
+            if !UserDefaults.standard.bool(forKey: "shortcutsShown") {
+                UserDefaults.standard.set(true, forKey: "shortcutsShown")
+                self.showShortcuts()
+            }
             #if DEBUG
             self.startTestScriptIfRequested()
             #endif
@@ -176,6 +181,10 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
 
     func handleKey(_ event: NSEvent) -> Bool {
         guard event.modifierFlags.intersection([.command, .control, .option]).isEmpty else { return false }
+        if overlay is ShortcutsView {
+            dismissOverlay()
+            return true
+        }
         switch event.keyCode {
         case 53: // Escape
             countBuffer = ""
@@ -408,21 +417,30 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
 
     // MARK: Overlays
 
-    private func present(_ view: NSView, atTop: Bool, width: CGFloat, height: CGFloat, focus: NSView) {
+    enum Placement { case top, bottom, centre }
+
+    private func present(_ view: NSView, at placement: Placement, width: CGFloat, height: CGFloat, focus: NSView) {
         dismissOverlay(restoreFocus: false)
         guard let container = window?.contentView else { return }
         view.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(view)
         let preferredWidth = view.widthAnchor.constraint(equalToConstant: width)
         preferredWidth.priority = .defaultHigh
+        let preferredHeight = view.heightAnchor.constraint(equalToConstant: height)
+        preferredHeight.priority = .defaultHigh
+        let vertical: NSLayoutConstraint
+        switch placement {
+        case .top: vertical = view.topAnchor.constraint(equalTo: container.safeAreaLayoutGuide.topAnchor, constant: 16)
+        case .bottom: vertical = view.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -24)
+        case .centre: vertical = view.centerYAnchor.constraint(equalTo: container.centerYAnchor)
+        }
         NSLayoutConstraint.activate([
             view.centerXAnchor.constraint(equalTo: container.centerXAnchor),
             preferredWidth,
             view.widthAnchor.constraint(lessThanOrEqualTo: container.widthAnchor, constant: -32),
-            view.heightAnchor.constraint(equalToConstant: height),
-            atTop
-                ? view.topAnchor.constraint(equalTo: container.safeAreaLayoutGuide.topAnchor, constant: 16)
-                : view.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -24),
+            preferredHeight,
+            view.heightAnchor.constraint(lessThanOrEqualTo: container.heightAnchor, constant: -32),
+            vertical,
         ])
         overlay = view
         window?.makeFirstResponder(focus)
@@ -443,7 +461,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
             onSubmit(text, shift)
         }
         bar.onCancel = { [weak self] in self?.dismissOverlay() }
-        present(bar, atTop: false, width: 440, height: 40, focus: bar.field)
+        present(bar, at: .bottom, width: 440, height: 40, focus: bar.field)
         bar.field.currentEditor()?.selectAll(nil)
     }
 
@@ -455,7 +473,13 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
         }
         palette.onCancel = { [weak self] in self?.dismissOverlay() }
         let height = CGFloat(min(items.count, 12)) * PaletteView.rowHeight + 60
-        present(palette, atTop: true, width: 620, height: height, focus: palette.field)
+        present(palette, at: .top, width: 620, height: height, focus: palette.field)
+
+    }
+
+    /// The keyboard shortcuts sheet. Any key or a click outside closes it.
+    func showShortcuts() {
+        present(ShortcutsView(), at: .centre, width: 820, height: 640, focus: pdfView)
     }
 
     // MARK: Find and go to page
