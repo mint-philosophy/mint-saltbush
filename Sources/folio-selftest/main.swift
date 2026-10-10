@@ -53,5 +53,13 @@ for i in 0..<2 {
         }
     }
 }
+// Export: the Markdown summary should hold both highlights (the cross-page one counts once per page) and the note.
+let summary = ReadingKit.markdownSummary(of: reloaded, title: "Selftest")
+print("markdown export: \(summary.count) items")
+print(summary.text.split(separator: "\n").prefix(8).joined(separator: "\n"))
+if summary.count != 4 || !summary.text.contains("A note on a multi-line highlight.") || !summary.text.contains("**Note, p. 2:** Standalone note") {
+    failures += 1
+    print("EXPORT MISMATCH")
+}
 print(failures == 0 ? "PDFKit round trip OK" : "PDFKit round trip FAILED")
 exit(failures == 0 ? 0 : 1)

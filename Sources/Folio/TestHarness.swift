@@ -22,11 +22,14 @@ extension ReaderWindowController {
         window?.contentView?.wantsLayer = true
         // Scripted steps never end an event cycle, so rely on Folio's explicit per-edit groups only.
         undo?.groupsByEvent = false
+        // Keep test copies off the real clipboard.
+        pasteboard = NSPasteboard(name: NSPasteboard.Name("org.mintresearch.folio.test"))
         run(steps[...], log: log)
     }
 
     private func run(_ steps: ArraySlice<String>, log: String) {
         guard let step = steps.first else { return }
+        if ProcessInfo.processInfo.environment["FOLIO_TEST_TRACE"] != nil { append(log, "> " + step) }
         let parts = step.split(separator: " ", maxSplits: 1).map(String.init)
         let arg = parts.count > 1 ? parts[1] : ""
         var delay = 0.15
@@ -59,6 +62,13 @@ extension ReaderWindowController {
             marker.draw(marker.bounds)
             NSGraphicsContext.restoreGraphicsState()
             try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: arg))
+            // Also write the page as the current theme would show it.
+            let pageImage = NSImage(size: box.size)
+            pageImage.addRepresentation(rep)
+            if let tiff = themed(pageImage).tiffRepresentation, let themedRep = NSBitmapImageRep(data: tiff) {
+                try? themedRep.representation(using: .png, properties: [:])?
+                    .write(to: URL(fileURLWithPath: arg.replacingOccurrences(of: ".png", with: "-\(theme.name.lowercased()).png")))
+            }
         case "undo": undo?.undo()
         case "cursor":
             // cursor <fx> <fy>: move the pointer over the page view and report the cursor shown.
@@ -106,6 +116,15 @@ extension ReaderWindowController {
             append(log, "rightbadge items=\(menu.items.map(\.title).filter { !$0.isEmpty })")
             if let item = menu.items.first(where: { $0.title == arg }), let action = item.action {
                 NSApp.sendAction(action, to: item.target, from: item)
+            }
+        case "hoverlink":
+            // hoverlink <png>: hover the first link on the current page; save its preview image.
+            guard let page = pdfView.currentPage,
+                  let link = page.annotations.first(where: { AnnotationKit.kind($0) == "link" }) else { append(log, "hoverlink none"); break }
+            hover(atViewPoint: pdfView.convert(NSPoint(x: link.bounds.midX, y: link.bounds.midY), from: page))
+            if let d = ReadingKit.internalDestination(of: link), let image = ReadingKit.previewImage(of: d),
+               let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff) {
+                try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: arg))
             }
         case "menu":
             // menu <title>: report whether a Folio menu command is enabled right now.
@@ -189,6 +208,10 @@ extension ReaderWindowController {
             "scale": Double(pdfView.scaleFactor),
             "mode": ["single", "singleContinuous", "twoUp", "twoUpContinuous"][pdfView.displayMode.rawValue],
             "fitScale": Double(pdfView.scaleFactorForSizeToFit),
+            "linkPreviewOpen": linkPopover?.isShown ?? false,
+            "theme": theme.name,
+            "filters": pdfView.contentFilters.count,
+            "clipboard": String((pasteboard.string(forType: .string) ?? "").prefix(120)),
             "geometry": "win=\(window!.frame) content=\(window!.contentView!.frame) screen=\(window!.screen?.visibleFrame ?? .zero) pdfView=\(pdfView.frame) safe=\(pdfView.safeAreaInsets) svInsets=\(pdfView.documentView?.enclosingScrollView?.contentInsets ?? NSEdgeInsetsZero) svFrame=\(pdfView.documentView?.enclosingScrollView?.frame ?? .zero) auto=\(pdfView.documentView?.enclosingScrollView?.automaticallyAdjustsContentInsets ?? false) clip=\(pdfView.documentView?.enclosingScrollView?.contentView.bounds ?? .zero)",
             "marker": pdf?.page(at: currentPageIndex).flatMap { markerViews.object(forKey: $0) }.map { m in
                 "bounds=\(m.bounds) frame=\(m.frame) flipped=\(m.isFlipped) box=\(pdf!.page(at: currentPageIndex)!.bounds(for: pdfView.displayBox)) super=\(m.superview.map { String(describing: type(of: $0)) } ?? "-") superFlipped=\(m.superview?.isFlipped ?? false) transform=\(m.layer?.affineTransform() ?? .identity)"

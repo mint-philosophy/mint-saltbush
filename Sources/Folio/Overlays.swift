@@ -419,9 +419,10 @@ final class ShortcutsView: NSVisualEffectView {
         [("Move around", ["Next Page", "Previous Page", "Screen Down", "Screen Up", "First Page", "Last Page",
                           "Go to Page…", "Back", "Forward"]),
          ("Search", ["Find…", "Find Next", "Find Previous"])],
-        [("Highlights and notes", ["Highlight", "Add or Edit Note", "Remove Highlight", "Change Colour"]),
+        [("Highlights and notes", ["Highlight", "Add or Edit Note", "Remove Highlight", "Change Colour",
+                                   "Copy Highlights and Notes", "Export Highlights and Notes…"]),
          ("Lists", ["Contents…", "Highlights and Notes…", "Recent Documents…", "All Commands"]),
-         ("View", ["Reader Mode", "Continuous Scrolling", "Two-Page Spread", "Zoom In", "Zoom Out", "Fit to Window",
+         ("View", ["Reader Mode", "Change Theme", "Continuous Scrolling", "Two-Page Spread", "Zoom In", "Zoom Out", "Fit to Window",
                    "Full Screen", "Keyboard Shortcuts"])],
     ]
 
@@ -457,7 +458,8 @@ final class ShortcutsView: NSVisualEffectView {
         let tips = NSTextField(wrappingLabelWithString:
             "Select text, then press h to highlight it and n to add a note. In a note, Return starts a new line and Esc saves. "
             + "In search, Return and ⇧Return step through matches; Esc closes and leaves the match selected. "
-            + "Click a note's circle in the margin to open it; right-click it to delete.")
+            + "Click a note's circle in the margin to open it; right-click it to delete. "
+            + "Hover over a citation or footnote to preview what it points to.")
         tips.font = .systemFont(ofSize: 12)
         tips.textColor = .secondaryLabelColor
 

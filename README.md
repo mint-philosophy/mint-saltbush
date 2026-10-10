@@ -42,10 +42,13 @@ Papers open one page per screen, fitted to the window. Bare keys are always on; 
 | `n` | note on the selected passage (highlighting it if needed) or on the highlight you just made; otherwise on the highlight under the pointer, or a standalone note at the pointer |
 | `x` or ⌫ | remove the selected or just-made highlight, or the one under the pointer |
 | `c` | change colour of the selected or just-made highlight, or of the default colour |
+| `e` | copy every highlight and note as Markdown, with page numbers |
+| ⇧⌘E | export highlights and notes to a Markdown file |
 | `t` | contents (outline), filterable |
 | `;` | every highlight and note in the document, filterable |
 | `o` | recent documents |
 | `r` (⇧⌘R) | reader mode: no title bar, buttons or scroll bars, in an ordinary window |
+| `b` | theme: normal, sepia, night |
 | ⌘2 | two-page spread |
 | `w` (⌘1) | switch between one page per screen and continuous scrolling (remembered per file) |
 | `+` / `-` / `=` | zoom in / out / fit to window |
@@ -58,6 +61,8 @@ Papers open one page per screen, fitted to the window. Bare keys are always on; 
 The usual flow: select a passage, press `h`, then `n`, type, and press Esc. The note attaches to that highlight.
 
 The note editor behaves like any Mac text field: Return starts a new line, ⌥ and ⌘ with the arrows move by word and line, and Folio's own shortcuts are off while you type. Esc or ⌘Return saves and closes, as does clicking elsewhere. Clearing a standalone note's text deletes it.
+
+Hover over a citation, footnote or cross-reference link for a moment and a preview of what it points to pops up, so you can check a reference without losing your place. (This works in PDFs with linked citations, which includes most LaTeX papers and many publishers' PDFs.)
 
 A highlight with a note gets a circle in the left margin, level with its first line; click the circle to open the note, or right-click it to edit or delete the note (keeping the highlight) or to remove both. Right-clicking a standalone note offers Edit and Delete. Clicking a highlight selects it. There's no margin bar, and the page layout never shifts. The pointer is an I-beam over pages and a hand over links and note circles.
 

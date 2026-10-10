@@ -7,7 +7,8 @@ final class ReaderPDFView: PDFView {
 
     override init(frame: NSRect) {
         super.init(frame: frame)
-        addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseMoved, .cursorUpdate, .activeInKeyWindow, .inVisibleRect],
+        addTrackingArea(NSTrackingArea(rect: .zero,
+                                       options: [.mouseMoved, .mouseEnteredAndExited, .cursorUpdate, .activeInKeyWindow, .inVisibleRect],
                                        owner: self))
     }
 
@@ -26,7 +27,24 @@ final class ReaderPDFView: PDFView {
 
     override func mouseMoved(with event: NSEvent) {
         super.mouseMoved(with: event)
-        cursor(at: convert(event.locationInWindow, from: nil)).set()
+        let p = convert(event.locationInWindow, from: nil)
+        cursor(at: p).set()
+        controller?.hover(atViewPoint: p)
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        controller?.endHover()
+    }
+
+    override func scrollWheel(with event: NSEvent) {
+        controller?.endHover()
+        super.scrollWheel(with: event)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        controller?.endHover()
+        super.mouseDown(with: event)
     }
 
     override func cursorUpdate(with event: NSEvent) {
@@ -52,6 +70,10 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
     var contextTarget: PageAnnotation?
     /// The highlight just made with h, so that n, x and c apply to it without reselecting.
     var recentHighlight: PageAnnotation?
+    var hoveredLink: PDFAnnotation?
+    var previewWork: DispatchWorkItem?
+    var linkPopover: NSPopover?
+    var pasteboard = NSPasteboard.general
     private var keyMonitor: Any?
     private var mouseMonitor: Any?
     private var mouseDownPoint: NSPoint?
@@ -100,10 +122,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
         // One page per screen by default; the arrow keys turn pages.
         pdfView.displayMode = .singlePage
         pdfView.displaysPageBreaks = true
-        pdfView.backgroundColor = NSColor(name: nil) { appearance in
-            appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-                ? NSColor(white: 0.14, alpha: 1) : NSColor(white: 0.87, alpha: 1)
-        }
+        pdfView.backgroundColor = Self.surround
         pdfView.pageOverlayViewProvider = self
         NotificationCenter.default.addObserver(self, selector: #selector(pageChanged),
                                                name: .PDFViewPageChanged, object: pdfView)
@@ -124,6 +143,8 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
         }
         pdfView.document = pdf
         applyReaderMode(UserDefaults.standard.bool(forKey: "readerMode"))
+        // Themes use Core Image filters, which need the page view to be in its window first.
+        applyTheme()
         DispatchQueue.main.async {
             self.restorePosition()
             self.window?.makeFirstResponder(self.pdfView)
@@ -179,6 +200,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
 
     func handleKey(_ event: NSEvent) -> Bool {
         guard event.modifierFlags.intersection([.command, .control, .option]).isEmpty else { return false }
+        endHover()
         if overlay is ShortcutsView {
             dismissOverlay()
             return true
@@ -323,6 +345,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
     }
 
     @objc private func pageChanged() {
+        endHover()
         if let pdf, let page = pdfView.currentPage {
             let i = pdf.index(for: page) + 1
             if let label = page.label, label != String(i) {
