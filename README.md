@@ -9,14 +9,7 @@ Folio is built on Apple's PDFKit and saves standard PDF annotations, so highligh
 Requires macOS 14 (Sonoma) or later, on Apple Silicon or Intel.
 
 1. Download `Folio.zip` from the [latest release](../../releases/latest), unzip it, and drag `Folio.app` into Applications.
-2. Folio isn't signed with an Apple developer certificate, so the first time you open it macOS will say it can't verify the app. Click **Done**, then open **System Settings ▸ Privacy & Security**, scroll down, and click **Open Anyway** next to the message about Folio. You only need to do this once.
-
-   If you're comfortable with Terminal, this does the same thing:
-
-   ```bash
-   xattr -dr com.apple.quarantine /Applications/Folio.app
-   ```
-
+2. Open it. Folio is signed and notarized by Apple, so it opens like any other app.
 3. To open PDFs in Folio, right-click a PDF ▸ Open With ▸ Folio. To make it the default, select a PDF, choose File ▸ Get Info, set "Open with" to Folio, and click **Change All**.
 
 ### Building from source
@@ -39,12 +32,9 @@ Papers open one page per screen, fitted to the window. Bare keys are always on; 
 |---|---|
 | → / ← | next / previous page, in every mode |
 | ↓ / ↑ | next / previous page (scrolls first if you've zoomed in) |
-| `j` / `k` | scroll down / up, turning the page at its edge (a count works: `5j`) |
-| `d` / `u` | half a screen down / up |
-| space / ⇧space | a screen down / up |
-| `J` / `K` | next / previous page |
-| `gg` / `G` | first / last page; `12G` goes to page 12 |
-| `:` (⌥⌘G) | go to page; accepts printed page numbers such as `245` |
+| space / ⇧space | a screen down / up, turning the page at its edge |
+| ⌘↑ / ⌘↓ | first / last page |
+| `g` (⌥⌘G) | go to page; accepts printed page numbers such as `245` |
 | ⌘[ / ⌘] | back / forward after a jump |
 | `s` (⌘F) | search as you type; all-lowercase ignores case. Return / ⇧Return go to the next / previous match; Esc closes and leaves the match selected |
 | ⌘G / ⇧⌘G | next / previous match after closing search |

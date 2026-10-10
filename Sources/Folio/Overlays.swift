@@ -416,8 +416,8 @@ final class NoteMarkerView: NSView {
 /// Keys come from the command table, so the sheet stays in step with the app.
 final class ShortcutsView: NSVisualEffectView {
     private static let layout: [[(group: String, titles: [String])]] = [
-        [("Move around", ["Next Page", "Previous Page", "Scroll Down", "Scroll Up", "Half Screen Down", "Half Screen Up",
-                          "Screen Down", "Screen Up", "First Page", "Last Page", "Go to Page…", "Back", "Forward"]),
+        [("Move around", ["Next Page", "Previous Page", "Screen Down", "Screen Up", "First Page", "Last Page",
+                          "Go to Page…", "Back", "Forward"]),
          ("Search", ["Find…", "Find Next", "Find Previous"])],
         [("Highlights and notes", ["Highlight", "Add or Edit Note", "Remove Highlight", "Change Colour"]),
          ("Lists", ["Contents…", "Highlights and Notes…", "Recent Documents…", "All Commands"]),

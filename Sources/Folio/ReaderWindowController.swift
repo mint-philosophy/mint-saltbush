@@ -54,8 +54,6 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
     var recentHighlight: PageAnnotation?
     private var keyMonitor: Any?
     private var mouseMonitor: Any?
-    private var countBuffer = ""
-    private var pendingG = false
     private var mouseDownPoint: NSPoint?
     private var lastQuery = ""
     private var searchAnchor: PDFSelection?
@@ -187,8 +185,6 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
         }
         switch event.keyCode {
         case 53: // Escape
-            countBuffer = ""
-            pendingG = false
             recentHighlight = nil
             if overlay != nil { dismissOverlay() } else { pdfView.clearSelection() }
             return true
@@ -213,36 +209,15 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
         default:
             break
         }
-        guard let chars = event.characters, chars.count == 1, let ch = chars.first else { return false }
-
-        if ch.isASCII, ch.isNumber, ch != "0" || !countBuffer.isEmpty {
-            countBuffer.append(ch)
-            pendingG = false
-            hud.show(countBuffer + "…")
-            return true
-        }
-        let count = Int(countBuffer)
-        countBuffer = ""
-        if pendingG {
-            pendingG = false
-            if chars == "g" {
-                goToPageIndex(count.map { $0 - 1 } ?? 0)
-                return true
-            }
-        }
-        if chars == "g" {
-            pendingG = true
-            return true
-        }
-        guard let index = Commands.byKey[chars] else { return false }
+        guard let chars = event.characters, let index = Commands.byKey[chars] else { return false }
         NSCursor.setHiddenUntilMouseMoves(true)
-        Commands.all[index].run(self, count)
+        Commands.all[index].run(self)
         return true
     }
 
     @objc func performCommand(_ sender: NSMenuItem) {
         guard Commands.all.indices.contains(sender.tag) else { return }
-        Commands.all[sender.tag].run(self, nil)
+        Commands.all[sender.tag].run(self)
     }
 
     /// Clicking a note circle opens the note; clicking a highlight selects it; clicking a sticky note opens it.
@@ -286,7 +261,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
     }
 
     /// In one-page-per-screen mode, scrolling past the edge of a page turns it,
-    /// so j, k, space and the arrows read straight through a document.
+    /// so space and the arrow keys read straight through a document.
     private func scroll(by dy: CGFloat, animated: Bool) {
         guard let sv = scrollView, let doc = sv.documentView else { return }
         let clip = sv.contentView
@@ -557,7 +532,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
     func showCommandPalette() {
         showPalette("Command", items: Commands.all.map { cmd in
             PaletteView.Item(title: cmd.title, detail: cmd.hint) { [weak self] in
-                if let self { cmd.run(self, nil) }
+                if let self { cmd.run(self) }
             }
         })
     }

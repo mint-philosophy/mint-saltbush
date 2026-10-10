@@ -10,11 +10,11 @@ struct Command {
     let menu: String?
     let equivalent: String
     let modifiers: NSEvent.ModifierFlags
-    let run: @MainActor (ReaderWindowController, Int?) -> Void
+    let run: @MainActor (ReaderWindowController) -> Void
 
     init(_ title: String, key: String? = nil, hint: String? = nil, menu: String? = nil,
          _ equivalent: String = "", _ modifiers: NSEvent.ModifierFlags = .command,
-         run: @escaping @MainActor (ReaderWindowController, Int?) -> Void) {
+         run: @escaping @MainActor (ReaderWindowController) -> Void) {
         self.title = title
         self.key = key
         self.extraHint = hint
@@ -60,42 +60,36 @@ struct Command {
 @MainActor
 enum Commands {
     static let all: [Command] = [
-        Command("Scroll Down", key: "j") { c, n in c.scrollLines(n ?? 1) },
-        Command("Scroll Up", key: "k") { c, n in c.scrollLines(-(n ?? 1)) },
-        Command("Half Screen Down", key: "d") { c, _ in c.scrollScreens(0.5) },
-        Command("Half Screen Up", key: "u") { c, _ in c.scrollScreens(-0.5) },
-        Command("Screen Down", key: " ") { c, _ in c.scrollScreens(1) },
-        Command("Screen Up", hint: "⇧space") { c, _ in c.scrollScreens(-1) },
-        Command("Next Page", key: "J", hint: "→", menu: "Go") { c, n in c.goToPageIndex(c.currentPageIndex + (n ?? 1)) },
-        Command("Previous Page", key: "K", hint: "←", menu: "Go") { c, n in c.goToPageIndex(c.currentPageIndex - (n ?? 1)) },
-        Command("First Page", hint: "gg", menu: "Go", "\u{F700}") { c, _ in c.goToPageIndex(0) },
-        Command("Last Page", key: "G", hint: "12G = page 12", menu: "Go", "\u{F701}") { c, n in
-            c.goToPageIndex(n.map { $0 - 1 } ?? Int.max)
-        },
-        Command("Go to Page…", key: ":", menu: "Go", "g", [.command, .option]) { c, _ in c.promptPage() },
-        Command("Back", menu: "Go", "[") { c, _ in c.pdfView.goBack(nil) },
-        Command("Forward", menu: "Go", "]") { c, _ in c.pdfView.goForward(nil) },
-        Command("Contents…", key: "t", menu: "Go", "t", [.command, .option]) { c, _ in c.showOutline() },
-        Command("Highlights and Notes…", key: ";", menu: "Go", "a", [.command, .option]) { c, _ in c.showAnnotations() },
-        Command("Recent Documents…", key: "o", menu: "File", "o", [.command, .shift]) { c, _ in c.showRecent() },
-        Command("Find…", key: "s", menu: "Edit", "f") { c, _ in c.beginFind() },
-        Command("Find Next", menu: "Edit", "g") { c, _ in c.findNext(backwards: false) },
-        Command("Find Previous", menu: "Edit", "g", [.command, .shift]) { c, _ in c.findNext(backwards: true) },
-        Command("Highlight", key: "h", menu: "Annotate", "h", [.control, .command]) { c, _ in c.highlightSelection() },
-        Command("Add or Edit Note", key: "n", menu: "Annotate", "n", [.control, .command]) { c, _ in c.addOrEditNote() },
-        Command("Remove Highlight", key: "x", hint: "⌫", menu: "Annotate", "\u{8}", [.control, .command]) { c, _ in
+        Command("Next Page", hint: "→  ↓", menu: "Go") { c in c.turnPage(forward: true) },
+        Command("Previous Page", hint: "←  ↑", menu: "Go") { c in c.turnPage(forward: false) },
+        Command("Screen Down", key: " ") { c in c.scrollScreens(1) },
+        Command("Screen Up", hint: "⇧space") { c in c.scrollScreens(-1) },
+        Command("First Page", menu: "Go", "\u{F700}") { c in c.goToPageIndex(0) },
+        Command("Last Page", menu: "Go", "\u{F701}") { c in c.goToPageIndex(Int.max) },
+        Command("Go to Page…", key: "g", menu: "Go", "g", [.command, .option]) { c in c.promptPage() },
+        Command("Back", menu: "Go", "[") { c in c.pdfView.goBack(nil) },
+        Command("Forward", menu: "Go", "]") { c in c.pdfView.goForward(nil) },
+        Command("Contents…", key: "t", menu: "Go", "t", [.command, .option]) { c in c.showOutline() },
+        Command("Highlights and Notes…", key: ";", menu: "Go", "a", [.command, .option]) { c in c.showAnnotations() },
+        Command("Recent Documents…", key: "o", menu: "File", "o", [.command, .shift]) { c in c.showRecent() },
+        Command("Find…", key: "s", menu: "Edit", "f") { c in c.beginFind() },
+        Command("Find Next", menu: "Edit", "g") { c in c.findNext(backwards: false) },
+        Command("Find Previous", menu: "Edit", "g", [.command, .shift]) { c in c.findNext(backwards: true) },
+        Command("Highlight", key: "h", menu: "Annotate", "h", [.control, .command]) { c in c.highlightSelection() },
+        Command("Add or Edit Note", key: "n", menu: "Annotate", "n", [.control, .command]) { c in c.addOrEditNote() },
+        Command("Remove Highlight", key: "x", hint: "⌫", menu: "Annotate", "\u{8}", [.control, .command]) { c in
             c.removeAnnotations()
         },
-        Command("Change Colour", key: "c", menu: "Annotate") { c, _ in c.cycleColour() },
-        Command("Reader Mode", key: "r", menu: "View", "r", [.command, .shift]) { c, _ in c.toggleReaderMode() },
-        Command("Zoom In", key: "+", menu: "View", "=") { c, _ in c.pdfView.zoomIn(nil) },
-        Command("Zoom Out", key: "-", menu: "View", "-") { c, _ in c.pdfView.zoomOut(nil) },
-        Command("Fit to Window", key: "=", menu: "View", "0") { c, _ in c.pdfView.autoScales = true },
-        Command("Two-Page Spread", menu: "View", "2") { c, _ in c.toggleSpread() },
-        Command("Continuous Scrolling", key: "w", menu: "View", "1") { c, _ in c.toggleContinuous() },
-        Command("Full Screen", key: "f", hint: "⌃⌘F") { c, _ in c.window?.toggleFullScreen(nil) },
-        Command("Keyboard Shortcuts", key: "?", menu: "Help", "/") { c, _ in c.showShortcuts() },
-        Command("All Commands", menu: "Help", "p", [.command, .shift]) { c, _ in c.showCommandPalette() },
+        Command("Change Colour", key: "c", menu: "Annotate") { c in c.cycleColour() },
+        Command("Reader Mode", key: "r", menu: "View", "r", [.command, .shift]) { c in c.toggleReaderMode() },
+        Command("Zoom In", key: "+", menu: "View", "=") { c in c.pdfView.zoomIn(nil) },
+        Command("Zoom Out", key: "-", menu: "View", "-") { c in c.pdfView.zoomOut(nil) },
+        Command("Fit to Window", key: "=", menu: "View", "0") { c in c.pdfView.autoScales = true },
+        Command("Two-Page Spread", menu: "View", "2") { c in c.toggleSpread() },
+        Command("Continuous Scrolling", key: "w", menu: "View", "1") { c in c.toggleContinuous() },
+        Command("Full Screen", key: "f", hint: "⌃⌘F") { c in c.window?.toggleFullScreen(nil) },
+        Command("Keyboard Shortcuts", key: "?", menu: "Help", "/") { c in c.showShortcuts() },
+        Command("All Commands", menu: "Help", "p", [.command, .shift]) { c in c.showCommandPalette() },
     ]
 
     static let byKey: [String: Int] = {
