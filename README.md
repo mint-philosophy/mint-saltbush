@@ -25,26 +25,28 @@ Papers open one page per screen, fitted to the window. Bare keys are always on; 
 | `gg` / `G` | first / last page; `12G` goes to page 12 |
 | `:` (⌥⌘G) | go to page; accepts printed page numbers such as `245` |
 | ⌘[ / ⌘] | back / forward after a jump |
-| `/` (⌘F) | find as you type; all-lowercase ignores case. Return closes and keeps the match selected |
-| `n` / `N` | next / previous match |
+| `s` (⌘F) | search as you type; all-lowercase ignores case. Return / ⇧Return go to the next / previous match; Esc closes and leaves the match selected |
+| ⌘G / ⇧⌘G | next / previous match after closing search |
 | `h` | highlight the selection; overlapping highlights merge |
-| `a` | note: on the selection (highlights it too), on the highlight under the pointer, or a standalone note at the pointer |
-| `x` or ⌫ | remove the highlight under the selection or pointer |
-| `c` | change colour of the selected highlight, or of the default colour |
+| `n` | note on the selected passage (highlighting it if needed) or on the highlight you just made; otherwise on the highlight under the pointer, or a standalone note at the pointer |
+| `x` or ⌫ | remove the selected or just-made highlight, or the one under the pointer |
+| `c` | change colour of the selected or just-made highlight, or of the default colour |
 | `t` | contents (outline), filterable |
 | `;` | every highlight and note in the document, filterable |
 | `o` | recent documents |
 | `r` (⇧⌘R) | reader mode: no title bar, buttons or scroll bars, in an ordinary window |
-| `s` | two-page spread |
+| ⌘2 | two-page spread |
 | `w` (⌘1) | switch between one page per screen and continuous scrolling (remembered per file) |
 | `+` / `-` / `=` | zoom in / out / fit to window |
 | `f` | full screen |
 | Esc | clear selection or close a panel |
 | ⌘Z | undo any highlight, note or colour change |
 
-In the note editor, Return or Esc saves and closes, and ⇧Return starts a new line. Clearing a standalone note's text deletes it. Clicking a highlight selects it; clicking one that has a note opens the note.
+The usual flow: select a passage, press `h`, then `n`, type, and press Esc. The note attaches to that highlight.
 
-A highlight with a note is marked by a small dot at its end. There's no margin bar, and the page layout never shifts.
+The note editor behaves like any Mac text field: Return starts a new line, ⌥ and ⌘ with the arrows move by word and line, and Folio's own shortcuts are off while you type. Esc or ⌘Return saves and closes, as does clicking elsewhere. Clearing a standalone note's text deletes it.
+
+A highlight with a note gets a circle in the left margin, level with its first line; click the circle to open the note. Clicking a highlight selects it. There's no margin bar, and the page layout never shifts. The pointer is an I-beam over pages and a hand over links and note circles.
 
 Folio remembers your position, zoom and spread for each file, and remembers whether reader mode was on. Edits autosave in place through macOS document saving, which writes to a temporary file and swaps it in, so a crash mid-save can't corrupt the PDF.
 

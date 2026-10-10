@@ -69,11 +69,13 @@ enum Commands {
         Command("Contents…", key: "t", menu: "Go", "t", [.command, .option]) { c, _ in c.showOutline() },
         Command("Highlights and Notes…", key: ";", menu: "Go", "a", [.command, .option]) { c, _ in c.showAnnotations() },
         Command("Recent Documents…", key: "o", menu: "File", "o", [.command, .shift]) { c, _ in c.showRecent() },
-        Command("Find…", key: "/", menu: "Edit", "f") { c, _ in c.beginFind() },
-        Command("Find Next", key: "n", menu: "Edit", "g") { c, _ in c.findNext(backwards: false) },
-        Command("Find Previous", key: "N", menu: "Edit", "g", [.command, .shift]) { c, _ in c.findNext(backwards: true) },
+        Command("Find…", key: "s", hint: "then Return / ⇧Return for next / previous", menu: "Edit", "f") { c, _ in
+            c.beginFind()
+        },
+        Command("Find Next", menu: "Edit", "g") { c, _ in c.findNext(backwards: false) },
+        Command("Find Previous", menu: "Edit", "g", [.command, .shift]) { c, _ in c.findNext(backwards: true) },
         Command("Highlight", key: "h", menu: "Annotate", "h", [.control, .command]) { c, _ in c.highlightSelection() },
-        Command("Add or Edit Note", key: "a", menu: "Annotate", "n", [.control, .command]) { c, _ in c.addOrEditNote() },
+        Command("Add or Edit Note", key: "n", menu: "Annotate", "n", [.control, .command]) { c, _ in c.addOrEditNote() },
         Command("Remove Highlight", key: "x", hint: "⌫", menu: "Annotate", "\u{8}", [.control, .command]) { c, _ in
             c.removeAnnotations()
         },
@@ -82,7 +84,7 @@ enum Commands {
         Command("Zoom In", key: "+", menu: "View", "=") { c, _ in c.pdfView.zoomIn(nil) },
         Command("Zoom Out", key: "-", menu: "View", "-") { c, _ in c.pdfView.zoomOut(nil) },
         Command("Fit to Window", key: "=", menu: "View", "0") { c, _ in c.pdfView.autoScales = true },
-        Command("Two-Page Spread", key: "s", menu: "View", "2") { c, _ in c.toggleSpread() },
+        Command("Two-Page Spread", menu: "View", "2") { c, _ in c.toggleSpread() },
         Command("Continuous Scrolling", key: "w", menu: "View", "1") { c, _ in c.toggleContinuous() },
         Command("Full Screen", key: "f", hint: "⌃⌘F") { c, _ in c.window?.toggleFullScreen(nil) },
         Command("All Commands", key: "?", menu: "Help", "p", [.command, .shift]) { c, _ in c.showCommandPalette() },

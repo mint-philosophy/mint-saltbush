@@ -31,8 +31,9 @@ extension ReaderWindowController {
             hud.show("Select some text first")
             return
         }
-        makeHighlight()
+        let created = makeHighlight()
         pdfView.clearSelection()
+        recentHighlight = created.first
     }
 
     /// Highlights the selection. Existing highlights it overlaps are merged into the new one,
@@ -52,11 +53,16 @@ extension ReaderWindowController {
         return created
     }
 
+    /// n: the note goes on the selected passage (highlighting it if needed), else on the
+    /// highlight just made, else on the highlight under the pointer, else on the page at the pointer.
     func addOrEditNote() {
         if let hit = annotationsTouchingSelection().first {
             editNote(hit.annotation, on: hit.page)
         } else if textSelection != nil, let hit = makeHighlight().first {
             pdfView.clearSelection()
+            recentHighlight = hit
+            editNote(hit.annotation, on: hit.page)
+        } else if let hit = liveRecentHighlight {
             editNote(hit.annotation, on: hit.page)
         } else if let hit = annotationUnderMouse() {
             editNote(hit.annotation, on: hit.page)
@@ -66,8 +72,15 @@ extension ReaderWindowController {
         }
     }
 
+    /// The highlight made by the last h, if it still exists.
+    var liveRecentHighlight: PageAnnotation? {
+        guard let r = recentHighlight, r.page.annotations.contains(where: { $0 === r.annotation }) else { return nil }
+        return r
+    }
+
     func removeAnnotations() {
         var targets = annotationsTouchingSelection()
+        if targets.isEmpty, let hit = liveRecentHighlight { targets = [hit] }
         if targets.isEmpty, let hit = annotationUnderMouse() { targets = [hit] }
         guard !targets.isEmpty else {
             hud.show("Nothing to remove here")
@@ -75,11 +88,13 @@ extension ReaderWindowController {
         }
         replace(targets, with: [], name: targets.count == 1 ? "Remove Highlight" : "Remove Highlights")
         pdfView.clearSelection()
+        recentHighlight = nil
     }
 
     func cycleColour() {
         var targets = annotationsTouchingSelection()
         if targets.isEmpty, let last = lastRecoloured, Date().timeIntervalSince(last.time) < 4 { targets = last.targets }
+        if targets.isEmpty, let hit = liveRecentHighlight { targets = [hit] }
         if targets.isEmpty, let hit = annotationUnderMouse(), AnnotationKit.isMarkup(hit.annotation) { targets = [hit] }
         guard let first = targets.first else {
             colourIndex = (colourIndex + 1) % Self.colours.count
@@ -97,7 +112,8 @@ extension ReaderWindowController {
     // MARK: Note editing
 
     func editNote(_ a: PDFAnnotation, on page: PDFPage) {
-        let anchor = AnnotationKit.isSticky(a) ? a.bounds : (AnnotationKit.rects(of: a).last ?? a.bounds)
+        // Notes on highlights open from their circle in the margin.
+        let anchor = AnnotationKit.noteBadgeRect(for: a, on: page) ?? a.bounds
         pdfView.go(to: anchor, on: page)
         let rect = pdfView.convert(anchor, from: page)
         openEditor(text: a.contents ?? "", anchor: rect) { [weak self] text in

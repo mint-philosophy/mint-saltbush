@@ -104,6 +104,27 @@ public enum AnnotationKit {
         }
     }
 
+    public static func hasNote(_ a: PDFAnnotation) -> Bool { !(a.contents ?? "").trimmed.isEmpty }
+
+    /// Where a highlight's note circle sits: in the margin, level with its first line.
+    /// Defined whether or not the highlight has a note yet, so a new note can open from the same spot.
+    public static func noteBadgeRect(for a: PDFAnnotation, on page: PDFPage) -> CGRect? {
+        guard isMarkup(a),
+              let first = rects(of: a).max(by: { ($0.maxY, -$0.minX) < ($1.maxY, -$1.minX) }) else { return nil }
+        // Use the start of the whole line (or column), not of the highlight, so the circle lands in the margin.
+        let lineStart = page.selectionForLine(at: CGPoint(x: first.midX, y: first.midY))?.bounds(for: page).minX ?? first.minX
+        let d: CGFloat = 14
+        let box = page.bounds(for: .cropBox)
+        return CGRect(x: max(box.minX + 4, min(lineStart, first.minX) - d - 8), y: first.midY - d / 2, width: d, height: d)
+    }
+
+    /// The highlight whose note circle is under a page-space point (with a little slack for clicking).
+    public static func noteBadge(at p: CGPoint, on page: PDFPage) -> PDFAnnotation? {
+        page.annotations.first { a in
+            hasNote(a) && (noteBadgeRect(for: a, on: page)?.insetBy(dx: -4, dy: -4).contains(p) ?? false)
+        }
+    }
+
     /// The text under a markup annotation, as a selection.
     public static func textSelection(of a: PDFAnnotation, on page: PDFPage) -> PDFSelection? {
         var result: PDFSelection?

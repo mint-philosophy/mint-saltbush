@@ -8,7 +8,7 @@ import PDFKit
 /// Keys go through the same path as real typing (key monitor, then the window).
 ///
 /// Steps: key <char|esc|ret|sret|down|up|del|space|sspace> · type <text> · wait <s>
-///        select <page> <start> <length> · click <fx> <fy> · snap <png> · state · undo · quit
+///        select <page> <start> <length> · click <fx> <fy> · cursor <fx> <fy> · badge cursor|click · menu <title> · snap <png> · state · undo · quit
 extension ReaderWindowController {
     private static var started = false
 
@@ -40,7 +40,62 @@ extension ReaderWindowController {
                 pdfView.setCurrentSelection(page.selection(for: NSRange(location: n[1], length: n[2])), animate: false)
             }
         case "snap": snapshot(to: arg)
+        case "pagesnap":
+            // pagesnap <png>: the current page with its annotations and note circles, drawn off screen at 2x.
+            guard let page = pdfView.currentPage else { break }
+            let box = page.bounds(for: .cropBox)
+            let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(box.width * 2), pixelsHigh: Int(box.height * 2),
+                                       bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                       colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+            NSGraphicsContext.saveGraphicsState()
+            let ctx = NSGraphicsContext(bitmapImageRep: rep)!
+            NSGraphicsContext.current = ctx
+            ctx.cgContext.scaleBy(x: 2, y: 2)
+            NSColor.white.setFill()
+            NSRect(origin: .zero, size: box.size).fill()
+            page.draw(with: .cropBox, to: ctx.cgContext)
+            let marker = NoteMarkerView(page: page, box: box)
+            marker.frame = NSRect(origin: .zero, size: box.size)
+            marker.draw(marker.bounds)
+            NSGraphicsContext.restoreGraphicsState()
+            try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: arg))
         case "undo": undo?.undo()
+        case "cursor":
+            // cursor <fx> <fy>: move the pointer over the page view and report the cursor shown.
+            let f = arg.split(separator: " ").compactMap { Double($0) }
+            let p = pdfView.convert(NSPoint(x: pdfView.bounds.width * f[0], y: pdfView.bounds.height * f[1]), to: nil)
+            if let e = NSEvent.mouseEvent(with: .mouseMoved, location: p, modifierFlags: [],
+                                          timestamp: ProcessInfo.processInfo.systemUptime,
+                                          windowNumber: window!.windowNumber, context: nil,
+                                          eventNumber: 0, clickCount: 0, pressure: 0) {
+                window!.sendEvent(e)
+                let area = pdfView.areaOfInterest(forMouse: e)
+                let names: [(NSCursor, String)] = [(.iBeam, "iBeam"), (.pointingHand, "pointingHand"), (.arrow, "arrow"),
+                                                   (.openHand, "openHand"), (.closedHand, "closedHand")]
+                let current = names.first { $0.0 == NSCursor.current }?.1 ?? "other"
+                append(log, "cursor \(arg) area=\(area.rawValue) cursor=\(current)")
+            }
+        case "badge":
+            // badge cursor|click: point at or click the first note circle on the current page.
+            guard let page = pdfView.currentPage,
+                  let a = page.annotations.first(where: { AnnotationKit.hasNote($0) }),
+                  let r = AnnotationKit.noteBadgeRect(for: a, on: page) else { append(log, "badge none"); break }
+            let p = pdfView.convert(pdfView.convert(NSPoint(x: r.midX, y: r.midY), from: page), to: nil)
+            let types: [NSEvent.EventType] = arg == "click" ? [.leftMouseDown, .leftMouseUp] : [.mouseMoved]
+            for type in types {
+                guard let e = NSEvent.mouseEvent(with: type, location: p, modifierFlags: [],
+                                                 timestamp: ProcessInfo.processInfo.systemUptime,
+                                                 windowNumber: window!.windowNumber, context: nil, eventNumber: 0,
+                                                 clickCount: type == .mouseMoved ? 0 : 1, pressure: 1) else { continue }
+                NSApp.sendEvent(e)
+            }
+            if arg != "click" {
+                append(log, "badge cursor=\(NSCursor.current == .pointingHand ? "pointingHand" : NSCursor.current == .iBeam ? "iBeam" : "other")")
+            }
+        case "menu":
+            // menu <title>: report whether a Folio menu command is enabled right now.
+            let item = NSMenuItem(title: arg, action: #selector(performCommand(_:)), keyEquivalent: "")
+            append(log, "menu \(arg) enabled=\(validateMenuItem(item))")
         case "click":
             // click <fx> <fy>: a real click at a fraction of the page view's width and height.
             let f = arg.split(separator: " ").compactMap { Double($0) }

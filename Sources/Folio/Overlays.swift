@@ -290,7 +290,22 @@ private final class PaletteRow: NSTableCellView {
     }
 }
 
-/// The note editor. Return or Escape saves and closes; Shift-Return starts a new line.
+/// Text view for notes: standard editing keys throughout; ⌘Return saves and closes.
+final class NoteTextView: NSTextView {
+    var onDone: (() -> Void)?
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.keyCode == 36 || event.keyCode == 76,
+           event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.command) {
+            onDone?()
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+}
+
+/// The note editor. It edits like any Mac text field (Return is a new line, ⌥/⌘ arrows move
+/// by word and line); Esc or ⌘Return saves and closes, as does clicking elsewhere.
 final class NoteEditor: NSViewController, NSTextViewDelegate, NSPopoverDelegate {
     let popover = NSPopover()
     var onCommit: ((String) -> Void)?
@@ -308,11 +323,21 @@ final class NoteEditor: NSViewController, NSTextViewDelegate, NSPopoverDelegate 
     required init?(coder: NSCoder) { fatalError() }
 
     override func loadView() {
-        let scroll = NSTextView.scrollableTextView()
-        scroll.frame = NSRect(x: 0, y: 0, width: 340, height: 130)
+        let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 360, height: 150))
         scroll.drawsBackground = false
+        scroll.hasVerticalScroller = true
         scroll.autohidesScrollers = true
-        textView = scroll.documentView as? NSTextView
+        scroll.borderType = .noBorder
+        let noteView = NoteTextView(frame: scroll.contentView.bounds)
+        noteView.minSize = .zero
+        noteView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: .greatestFiniteMagnitude)
+        noteView.isVerticallyResizable = true
+        noteView.isHorizontallyResizable = false
+        noteView.autoresizingMask = [.width]
+        noteView.textContainer?.widthTracksTextView = true
+        noteView.onDone = { [weak self] in self?.popover.performClose(nil) }
+        scroll.documentView = noteView
+        textView = noteView
         textView.string = initialText
         textView.font = .systemFont(ofSize: 13)
         textView.isRichText = false
@@ -341,13 +366,6 @@ final class NoteEditor: NSViewController, NSTextViewDelegate, NSPopoverDelegate 
         case #selector(NSResponder.cancelOperation(_:)):
             popover.performClose(nil)
             return true
-        case #selector(NSResponder.insertNewline(_:)):
-            if NSApp.currentEvent?.modifierFlags.contains(.shift) == true {
-                textView.insertNewlineIgnoringFieldEditor(nil)
-            } else {
-                popover.performClose(nil)
-            }
-            return true
         default:
             return false
         }
@@ -360,7 +378,7 @@ final class NoteEditor: NSViewController, NSTextViewDelegate, NSPopoverDelegate 
     }
 }
 
-/// Draws a small dot at the end of each highlight that carries a note.
+/// Draws a circle in the margin beside each highlight that carries a note; click it to open the note.
 /// This is the only on-page sign of a note: no margin bars, no reflowed margins.
 final class NoteMarkerView: NSView {
     private weak var page: PDFPage?
@@ -380,14 +398,16 @@ final class NoteMarkerView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         guard let page, box.width > 0, box.height > 0 else { return }
         let sx = bounds.width / box.width, sy = bounds.height / box.height
-        for a in page.annotations where AnnotationKit.isMarkup(a) && !(a.contents ?? "").trimmed.isEmpty {
-            // The last line: lowest on the page, then furthest right.
-            guard let line = AnnotationKit.rects(of: a).min(by: { ($0.minY, -$0.maxX) < ($1.minY, -$1.maxX) }) else { continue }
-            let r: CGFloat = 3
-            let centre = NSPoint(x: (line.maxX - box.minX + r + 1.5) * sx, y: (line.maxY - box.minY - r) * sy)
-            let colour = (a.color.usingColorSpace(.sRGB) ?? a.color).blended(withFraction: 0.45, of: .black) ?? .systemOrange
+        for a in page.annotations where AnnotationKit.hasNote(a) {
+            guard let r = AnnotationKit.noteBadgeRect(for: a, on: page) else { continue }
+            let circle = NSBezierPath(ovalIn: NSRect(x: (r.minX - box.minX) * sx, y: (r.minY - box.minY) * sy,
+                                                     width: r.width * sx, height: r.height * sy).insetBy(dx: 0.75, dy: 0.75))
+            let colour = a.color.usingColorSpace(.sRGB) ?? a.color
             colour.setFill()
-            NSBezierPath(ovalIn: NSRect(x: centre.x - r * sx, y: centre.y - r * sy, width: 2 * r * sx, height: 2 * r * sy)).fill()
+            circle.fill()
+            (colour.blended(withFraction: 0.45, of: .black) ?? .gray).setStroke()
+            circle.lineWidth = 1.2
+            circle.stroke()
         }
     }
 }

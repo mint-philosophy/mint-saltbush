@@ -5,8 +5,40 @@ import PDFKit
 final class ReaderPDFView: PDFView {
     weak var controller: ReaderWindowController?
 
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseMoved, .cursorUpdate, .activeInKeyWindow, .inVisibleRect],
+                                       owner: self))
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError() }
+
     override func menu(for event: NSEvent) -> NSMenu? {
         controller?.contextMenu(for: event)
+    }
+
+    // PDFKit leaves the arrow over text. Show the I-beam over pages, and a hand over links and note circles.
+    override func setCursorFor(_ area: PDFAreaOfInterest) {
+        guard let window else { return super.setCursorFor(area) }
+        cursor(at: convert(window.mouseLocationOutsideOfEventStream, from: nil)).set()
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        super.mouseMoved(with: event)
+        cursor(at: convert(event.locationInWindow, from: nil)).set()
+    }
+
+    override func cursorUpdate(with event: NSEvent) {
+        cursor(at: convert(event.locationInWindow, from: nil)).set()
+    }
+
+    func cursor(at p: NSPoint) -> NSCursor {
+        guard bounds.contains(p), let page = page(for: p, nearest: false) else { return .arrow }
+        let pagePoint = convert(p, to: page)
+        if AnnotationKit.noteBadge(at: pagePoint, on: page) != nil { return .pointingHand }
+        if let a = page.annotation(at: pagePoint), AnnotationKit.kind(a) == "link" { return .pointingHand }
+        return .iBeam
     }
 }
 
@@ -17,6 +49,8 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
     var noteEditor: NoteEditor?
     var lastRecoloured: (targets: [PageAnnotation], time: Date)?
     var contextPoint: NSPoint?
+    /// The highlight just made with h, so that n, x and c apply to it without reselecting.
+    var recentHighlight: PageAnnotation?
     private var keyMonitor: Any?
     private var mouseMonitor: Any?
     private var countBuffer = ""
@@ -42,6 +76,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
         window.center()
         super.init(window: window)
         window.delegate = self
+        window.acceptsMouseMovedEvents = true
         window.setFrameAutosaveName("FolioReader")
 
         let container = NSView()
@@ -73,6 +108,8 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
         pdfView.pageOverlayViewProvider = self
         NotificationCenter.default.addObserver(self, selector: #selector(pageChanged),
                                                name: .PDFViewPageChanged, object: pdfView)
+        NotificationCenter.default.addObserver(self, selector: #selector(selectionChanged),
+                                               name: .PDFViewSelectionChanged, object: pdfView)
         installMonitors()
     }
 
@@ -142,6 +179,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
         case 53: // Escape
             countBuffer = ""
             pendingG = false
+            recentHighlight = nil
             if overlay != nil { dismissOverlay() } else { pdfView.clearSelection() }
             return true
         case 51, 117: // Delete, Forward Delete
@@ -197,12 +235,28 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
         Commands.all[sender.tag].run(self, nil)
     }
 
+    /// Clicking a note circle opens the note; clicking a highlight selects it; clicking a sticky note opens it.
     private func handleClick(at windowPoint: NSPoint) {
-        guard let hit = annotation(atViewPoint: pdfView.convert(windowPoint, from: nil)) else { return }
-        if AnnotationKit.isMarkup(hit.annotation) { select(hit.annotation, on: hit.page) }
-        if AnnotationKit.isSticky(hit.annotation) || !(hit.annotation.contents ?? "").trimmed.isEmpty {
-            editNote(hit.annotation, on: hit.page)
+        let point = pdfView.convert(windowPoint, from: nil)
+        if let page = pdfView.page(for: point, nearest: false),
+           let a = AnnotationKit.noteBadge(at: pdfView.convert(point, to: page), on: page) {
+            editNote(a, on: page)
+            return
         }
+        guard let hit = annotation(atViewPoint: point) else { return }
+        if AnnotationKit.isMarkup(hit.annotation) { select(hit.annotation, on: hit.page) }
+        if AnnotationKit.isSticky(hit.annotation) { editNote(hit.annotation, on: hit.page) }
+    }
+
+    @objc private func selectionChanged() {
+        if textSelection != nil { recentHighlight = nil }
+    }
+
+    /// Folio's own commands stand aside while you're typing in a note or the find bar,
+    /// so ⌘↑, ⌘↓ and the rest do what they do in any text field.
+    @objc func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        guard item.action == #selector(performCommand(_:)) else { return true }
+        return noteEditor == nil && !(window?.firstResponder is NSText)
     }
 
     // MARK: Scrolling and pages
@@ -379,12 +433,12 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
         if restoreFocus { window?.makeFirstResponder(pdfView) }
     }
 
-    private func showPrompt(_ label: String, initial: String, onChange: ((String) -> Void)?,
+    private func showPrompt(_ label: String, initial: String, staysOpen: Bool = false, onChange: ((String) -> Void)?,
                             onSubmit: @escaping (String, Bool) -> Void) {
         let bar = PromptBar(label: label, text: initial)
         bar.onChange = onChange
         bar.onSubmit = { [weak self] text, shift in
-            self?.dismissOverlay()
+            if !staysOpen { self?.dismissOverlay() }
             onSubmit(text, shift)
         }
         bar.onCancel = { [weak self] in self?.dismissOverlay() }
@@ -407,13 +461,14 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
 
     func beginFind() {
         searchAnchor = pdfView.currentPage?.selection(for: NSRange(location: 0, length: 1))
-        showPrompt("Find", initial: lastQuery, onChange: { [weak self] query in
+        // Return and ⇧Return step through matches; Esc closes and leaves the match selected for h.
+        showPrompt("Find", initial: lastQuery, staysOpen: true, onChange: { [weak self] query in
             self?.lastQuery = query
             self?.findLive(query)
         }, onSubmit: { [weak self] query, shift in
             guard let self else { return }
             self.lastQuery = query
-            if shift { self.findNext(backwards: true) }
+            self.findNext(backwards: shift)
         })
     }
 
