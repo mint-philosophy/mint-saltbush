@@ -50,6 +50,7 @@ Papers open one page per screen, fitted to the window. Bare keys are always on; 
 | `;` | every highlight and note in the document, filterable |
 | `o` | recent documents |
 | `r` (⇧⌘R) | reader mode: no title bar, buttons or scroll bars, in an ordinary window |
+| `p` | show or hide the page number in the corner (on by default; it also fades while the pointer is over it) |
 | `b` | theme: normal, sepia, night |
 | ⌘2 | two-page spread |
 | `w` (⌘1) | switch between one page per screen and continuous scrolling (remembered per file) |

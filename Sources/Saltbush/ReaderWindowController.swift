@@ -63,6 +63,7 @@ final class ReaderPDFView: PDFView {
 final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPageOverlayViewProvider {
     let pdfView = ReaderPDFView()
     let hud = HUDView()
+    let pageCounter = PageCounterView()
     let markerViews = NSMapTable<PDFPage, NoteMarkerView>.weakToWeakObjects()
     var noteEditor: NoteEditor?
     var lastRecoloured: (targets: [PageAnnotation], time: Date)?
@@ -104,7 +105,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
 
         let container = NSView()
         window.contentView = container
-        for view in [pdfView, hud] as [NSView] {
+        for view in [pdfView, hud, pageCounter] as [NSView] {
             view.translatesAutoresizingMaskIntoConstraints = false
             container.addSubview(view)
         }
@@ -112,9 +113,13 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
             pdfView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             pdfView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             pdfView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            hud.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -14),
-            hud.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -14),
+            // Messages appear at the bottom centre, clear of the find bar; the page counter sits bottom right.
+            hud.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            hud.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -76),
+            pageCounter.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -14),
+            pageCounter.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -14),
         ])
+        pageCounter.isHidden = UserDefaults.standard.bool(forKey: "pageCounterOff")
         topBelowTitleBar = pdfView.topAnchor.constraint(equalTo: container.safeAreaLayoutGuide.topAnchor)
         topAtWindowEdge = pdfView.topAnchor.constraint(equalTo: container.topAnchor)
         topBelowTitleBar.isActive = true
@@ -148,6 +153,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
         // Themes use Core Image filters, which need the page view to be in its window first.
         applyTheme()
         DispatchQueue.main.async {
+            self.updatePageCounter()
             self.restorePosition()
             self.window?.makeFirstResponder(self.pdfView)
             // The first time Saltbush opens, show what the keys do.
@@ -350,16 +356,30 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
 
     @objc private func pageChanged() {
         endHover()
-        if let pdf, let page = pdfView.currentPage {
-            let i = pdf.index(for: page) + 1
-            if let label = page.label, label != String(i) {
-                hud.show("p. \(label)    \(i) / \(pdf.pageCount)")
-            } else {
-                hud.show("\(i) / \(pdf.pageCount)")
-            }
-        }
+        updatePageCounter()
+        // With the counter switched off, flash the page number instead.
+        if pageCounter.isHidden, let text = pageText { hud.show(text) }
         NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(savePosition), object: nil)
         perform(#selector(savePosition), with: nil, afterDelay: 1)
+    }
+
+    /// "12 / 30", or "p. 245 · 12 / 30" when the printed page number differs.
+    var pageText: String? {
+        guard let pdf, let page = pdfView.currentPage else { return nil }
+        let i = pdf.index(for: page) + 1
+        if let label = page.label, label != String(i) { return "p. \(label)  ·  \(i) / \(pdf.pageCount)" }
+        return "\(i) / \(pdf.pageCount)"
+    }
+
+    func updatePageCounter() {
+        pageCounter.text = pageText ?? ""
+    }
+
+    func togglePageCounter() {
+        pageCounter.isHidden.toggle()
+        UserDefaults.standard.set(pageCounter.isHidden, forKey: "pageCounterOff")
+        updatePageCounter()
+        hud.show(pageCounter.isHidden ? "Page number off" : "Page number on")
     }
 
     // MARK: View modes

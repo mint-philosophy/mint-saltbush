@@ -88,6 +88,7 @@ enum Commands {
         Command("Zoom Out", key: "-", menu: "View", "-") { c in c.pdfView.zoomOut(nil) },
         Command("Fit to Window", key: "=", menu: "View", "0") { c in c.pdfView.autoScales = true },
         Command("Two-Page Spread", menu: "View", "2") { c in c.toggleSpread() },
+        Command("Page Number", key: "p", menu: "View") { c in c.togglePageCounter() },
         Command("Change Theme", key: "b", hint: "normal, sepia, night", menu: "View") { c in c.cycleTheme() },
         Command("Continuous Scrolling", key: "w", menu: "View", "1") { c in c.toggleContinuous() },
         Command("Full Screen", key: "f", hint: "⌃⌘F") { c in c.window?.toggleFullScreen(nil) },

@@ -62,6 +62,50 @@ final class HUDView: NSVisualEffectView {
     }
 }
 
+/// The page number in the bottom-right corner. On by default; it fades away while
+/// the pointer is over it, so it never hides the text beneath.
+final class PageCounterView: NSVisualEffectView {
+    private let label = NSTextField(labelWithString: "")
+
+    var text: String {
+        get { label.stringValue }
+        set { label.stringValue = newValue }
+    }
+
+    init() {
+        super.init(frame: .zero)
+        styleAsPanel(self, radius: 7)
+        label.font = .monospacedDigitSystemFont(ofSize: 12, weight: .medium)
+        label.textColor = .secondaryLabelColor
+        label.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(label)
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 10),
+            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -10),
+            label.topAnchor.constraint(equalTo: topAnchor, constant: 5),
+            label.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -5),
+        ])
+        addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                                       owner: self))
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError() }
+
+    // Clicks pass through to the page.
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func mouseEntered(with event: NSEvent) { fade(to: 0) }
+    override func mouseExited(with event: NSEvent) { fade(to: 1) }
+
+    private func fade(to alpha: CGFloat) {
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.2
+            animator().alphaValue = alpha
+        }
+    }
+}
+
 /// A one-line input at the bottom of the window, used by Find and Go to Page.
 final class PromptBar: NSVisualEffectView, NSTextFieldDelegate {
     let field = NSTextField()
@@ -422,7 +466,7 @@ final class ShortcutsView: NSVisualEffectView {
         [("Highlights and notes", ["Highlight", "Add or Edit Note", "Remove Highlight", "Change Colour",
                                    "Copy Highlights and Notes", "Export Highlights and Notes…"]),
          ("Lists", ["Contents…", "Highlights and Notes…", "Recent Documents…", "All Commands"]),
-         ("View", ["Reader Mode", "Change Theme", "Continuous Scrolling", "Two-Page Spread", "Zoom In", "Zoom Out", "Fit to Window",
+         ("View", ["Reader Mode", "Page Number", "Change Theme", "Continuous Scrolling", "Two-Page Spread", "Zoom In", "Zoom Out", "Fit to Window",
                    "Full Screen", "Keyboard Shortcuts"])],
     ]
 

@@ -136,6 +136,15 @@ extension ReaderWindowController {
                 recordJumpIfLink(atWindowPoint: pdfView.convert(pdfView.convert(NSPoint(x: link.bounds.midX, y: link.bounds.midY), from: page), to: nil))
                 pdfView.go(to: d)
             }
+        case "counterhover":
+            // counterhover in|out: move the pointer onto or off the page counter.
+            let e = NSEvent.enterExitEvent(with: arg == "in" ? .mouseEntered : .mouseExited, location: .zero, modifierFlags: [],
+                                           timestamp: 0, windowNumber: window!.windowNumber, context: nil,
+                                           eventNumber: 0, trackingNumber: 0, userData: nil)!
+            if arg == "in" { pageCounter.mouseEntered(with: e) } else { pageCounter.mouseExited(with: e) }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                self.append(log, "counterhover \(arg) alpha=\(self.pageCounter.alphaValue)")
+            }
         case "menu":
             // menu <title>: report whether a Saltbush menu command is enabled right now.
             let item = NSMenuItem(title: arg, action: #selector(performCommand(_:)), keyEquivalent: "")
@@ -220,6 +229,7 @@ extension ReaderWindowController {
             "fitScale": Double(pdfView.scaleFactorForSizeToFit),
             "linkPreviewOpen": linkPopover?.isShown ?? false,
             "theme": theme.name,
+            "pageCounter": pageCounter.isHidden ? "off" : pageCounter.text,
             "filters": pdfView.contentFilters.count,
             "clipboard": String((pasteboard.string(forType: .string) ?? "").prefix(120)),
             "geometry": "win=\(window!.frame) content=\(window!.contentView!.frame) screen=\(window!.screen?.visibleFrame ?? .zero) pdfView=\(pdfView.frame) safe=\(pdfView.safeAreaInsets) svInsets=\(pdfView.documentView?.enclosingScrollView?.contentInsets ?? NSEdgeInsetsZero) svFrame=\(pdfView.documentView?.enclosingScrollView?.frame ?? .zero) auto=\(pdfView.documentView?.enclosingScrollView?.automaticallyAdjustsContentInsets ?? false) clip=\(pdfView.documentView?.enclosingScrollView?.contentView.bounds ?? .zero)",
