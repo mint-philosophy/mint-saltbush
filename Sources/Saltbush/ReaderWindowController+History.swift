@@ -56,12 +56,15 @@ extension ReaderWindowController {
         }
     }
 
-    /// A click on a link that leads elsewhere in the document is a jump.
-    func recordJumpIfLink(atWindowPoint windowPoint: NSPoint) {
-        let p = pdfView.convert(windowPoint, from: nil)
-        guard pdfView.bounds.contains(p), let page = pdfView.page(for: p, nearest: false),
-              let a = page.annotation(at: pdfView.convert(p, to: page)),
-              AnnotationKit.kind(a) == "link", ReadingKit.internalDestination(of: a) != nil else { return }
-        recordJump()
+    /// Follows a clicked link. Links within the document count as jumps; web links open in the browser.
+    func follow(_ link: PDFAnnotation) {
+        if let destination = ReadingKit.internalDestination(of: link) {
+            recordJump()
+            pdfView.go(to: destination)
+        } else if let action = link.action {
+            pdfView.perform(action)
+        } else if let url = link.url {
+            NSWorkspace.shared.open(url)
+        }
     }
 }

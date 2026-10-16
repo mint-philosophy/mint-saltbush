@@ -11,6 +11,59 @@ public enum ReadingKit {
         return destination?.page == nil ? nil : destination
     }
 
+    private static let linkTextCache = NSMapTable<PDFAnnotation, NSArray>.weakToStrongObjects()
+
+    /// The parts of a link that actually cover its text. Link boxes in papers are often padded
+    /// well beyond the citation, so this trims them to the characters inside.
+    public static func linkTextRects(of link: PDFAnnotation, on page: PDFPage) -> [CGRect] {
+        if let cached = linkTextCache.object(forKey: link) as? [NSValue] { return cached.map(\.rectValue) }
+        let box = link.bounds
+        let text = (page.string ?? "") as NSString
+        let slack = box.insetBy(dx: -0.5, dy: -0.5)
+        func isSpace(_ i: Int) -> Bool {
+            CharacterSet.whitespacesAndNewlines.contains(UnicodeScalar(text.character(at: i)) ?? " ")
+        }
+        // Padding around a link catches the edges of neighbouring words. Count a word as part of
+        // the link only if more than half of its letters lie wholly inside the box.
+        var glyphs: [CGRect] = []
+        var seenWords = Set<Int>()
+        if let selection = page.selection(for: box) {
+            for r in 0..<selection.numberOfTextRanges(on: page) {
+                let range = selection.range(at: r, on: page)
+                guard range.location != NSNotFound else { continue }
+                for index in range.location..<min(NSMaxRange(range), text.length) where !isSpace(index) {
+                    var start = index, end = index
+                    while start > 0 && !isSpace(start - 1) { start -= 1 }
+                    while end + 1 < text.length && !isSpace(end + 1) { end += 1 }
+                    guard seenWords.insert(start).inserted else { continue }
+                    let letters = (start...end).map { page.characterBounds(at: $0) }
+                    let inside = letters.filter { $0.width > 0 && slack.contains($0) }
+                    if inside.count * 2 > letters.count { glyphs += inside }
+                }
+            }
+        }
+        // Merge the characters into one rectangle per line.
+        var rects: [CGRect] = []
+        for glyph in glyphs.sorted(by: { ($0.midY, -$0.minX) > ($1.midY, -$1.minX) }) {
+            if let last = rects.last, abs(last.midY - glyph.midY) < max(last.height, glyph.height) / 2 {
+                rects[rects.count - 1] = last.union(glyph)
+            } else {
+                rects.append(glyph)
+            }
+        }
+        if rects.isEmpty { rects = [box] }  // a link over a figure rather than text
+        linkTextCache.setObject(rects.map { NSValue(rect: $0) } as NSArray, forKey: link)
+        return rects
+    }
+
+    /// The link whose text is under a page-space point.
+    public static func link(at p: CGPoint, on page: PDFPage) -> PDFAnnotation? {
+        page.annotations.last { a in
+            AnnotationKit.kind(a) == "link"
+                && linkTextRects(of: a, on: page).contains { $0.insetBy(dx: -0.5, dy: -1).contains(p) }
+        }
+    }
+
     /// A picture of the text at a destination: the column it lands in, from the target line down.
     public static func previewImage(of destination: PDFDestination, height: CGFloat = 130, maxWidth: CGFloat = 540) -> NSImage? {
         guard let page = destination.page else { return nil }

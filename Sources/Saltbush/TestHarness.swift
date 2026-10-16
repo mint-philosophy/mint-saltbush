@@ -131,11 +131,34 @@ extension ReaderWindowController {
             if let command = Commands.all.first(where: { $0.title == arg }) { command.run(self) } else { append(log, "no command \(arg)") }
         case "clicklink":
             // clicklink: click the first link on the current page (records the jump, then follows it).
-            if let page = pdfView.currentPage, let link = page.annotations.first(where: { AnnotationKit.kind($0) == "link" }),
-               let d = ReadingKit.internalDestination(of: link) {
-                recordJumpIfLink(atWindowPoint: pdfView.convert(pdfView.convert(NSPoint(x: link.bounds.midX, y: link.bounds.midY), from: page), to: nil))
-                pdfView.go(to: d)
+            if let page = pdfView.currentPage, let link = page.annotations.first(where: { AnnotationKit.kind($0) == "link" }) {
+                follow(link)
             }
+        case "linkprobe":
+            // linkprobe: is the first link hit on its text, and missed in its padding?
+            guard let page = pdfView.currentPage,
+                  let link = page.annotations.first(where: { AnnotationKit.kind($0) == "link" }) else { append(log, "linkprobe none"); break }
+            let text = ReadingKit.linkTextRects(of: link, on: page)
+            let centre = CGPoint(x: text[0].midX, y: text[0].midY)
+            let padding = CGPoint(x: (text[0].maxX + link.bounds.maxX) / 2, y: centre.y)
+            append(log, "linkprobe box=\(link.bounds.integral) text=\(text.map(\.integral)) onText=\(ReadingKit.link(at: centre, on: page) != nil) onPadding=\(ReadingKit.link(at: padding, on: page) != nil)")
+        case "pressdrag", "pressclick":
+            // A real press on the first link's text: a drag of 150 pt to the right, or a plain click.
+            guard let page = pdfView.currentPage,
+                  let link = page.annotations.first(where: { AnnotationKit.kind($0) == "link" }) else { break }
+            let r = ReadingKit.linkTextRects(of: link, on: page)[0]
+            let down = pdfView.convert(pdfView.convert(NSPoint(x: r.midX, y: r.midY), from: page), to: nil)
+            func mouse(_ type: NSEvent.EventType, _ p: NSPoint) -> NSEvent {
+                NSEvent.mouseEvent(with: type, location: p, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                                   windowNumber: window!.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1)!
+            }
+            let up = parts[0] == "pressdrag" ? NSPoint(x: down.x + 150, y: down.y) : down
+            if parts[0] == "pressdrag" {
+                NSApp.postEvent(mouse(.leftMouseDragged, NSPoint(x: down.x + 75, y: down.y)), atStart: false)
+                NSApp.postEvent(mouse(.leftMouseDragged, up), atStart: false)
+            }
+            NSApp.postEvent(mouse(.leftMouseUp, up), atStart: false)
+            pdfView.mouseDown(with: mouse(.leftMouseDown, down))
         case "counterhover":
             // counterhover in|out: move the pointer onto or off the page counter.
             let e = NSEvent.enterExitEvent(with: arg == "in" ? .mouseEntered : .mouseExited, location: .zero, modifierFlags: [],

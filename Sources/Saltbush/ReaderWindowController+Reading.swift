@@ -12,8 +12,8 @@ extension ReaderWindowController {
     func hover(atViewPoint p: NSPoint) {
         var link: PageAnnotation?
         if pdfView.bounds.contains(p), let page = pdfView.page(for: p, nearest: false),
-           let a = page.annotation(at: pdfView.convert(p, to: page)),
-           AnnotationKit.kind(a) == "link", ReadingKit.internalDestination(of: a) != nil {
+           let a = ReadingKit.link(at: pdfView.convert(p, to: page), on: page),
+           ReadingKit.internalDestination(of: a) != nil {
             link = PageAnnotation(a, page)
         }
         guard link?.annotation !== hoveredLink else { return }
@@ -22,7 +22,7 @@ extension ReaderWindowController {
         guard let link else { return }
         let work = DispatchWorkItem { [weak self] in self?.showLinkPreview(link) }
         previewWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: work)
     }
 
     func showLinkPreview(_ link: PageAnnotation) {

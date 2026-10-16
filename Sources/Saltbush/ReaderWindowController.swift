@@ -42,9 +42,33 @@ final class ReaderPDFView: PDFView {
         super.scrollWheel(with: event)
     }
 
+    /// A press on a link: a click follows it, but a drag selects text as it would anywhere else,
+    /// so passages full of citations can still be selected.
     override func mouseDown(with event: NSEvent) {
         controller?.endHover()
-        super.mouseDown(with: event)
+        let start = convert(event.locationInWindow, from: nil)
+        guard event.clickCount == 1, event.modifierFlags.intersection([.shift, .command, .option]).isEmpty,
+              let startPage = page(for: start, nearest: false), let document,
+              let link = ReadingKit.link(at: convert(start, to: startPage), on: startPage) else {
+            super.mouseDown(with: event)
+            return
+        }
+        let startPoint = convert(start, to: startPage)
+        var dragging = false
+        while let next = window?.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) {
+            let p = convert(next.locationInWindow, from: nil)
+            if next.type == .leftMouseUp {
+                if !dragging { controller?.follow(link) }
+                return
+            }
+            if !dragging && hypot(p.x - start.x, p.y - start.y) < 3 { continue }
+            dragging = true
+            autoscroll(with: next)
+            if let page = page(for: p, nearest: true) {
+                setCurrentSelection(document.selection(from: startPage, at: startPoint, to: page, at: convert(p, to: page)),
+                                    animate: false)
+            }
+        }
     }
 
     override func cursorUpdate(with event: NSEvent) {
@@ -55,7 +79,7 @@ final class ReaderPDFView: PDFView {
         guard bounds.contains(p), let page = page(for: p, nearest: false) else { return .arrow }
         let pagePoint = convert(p, to: page)
         if AnnotationKit.noteBadge(at: pagePoint, on: page) != nil { return .pointingHand }
-        if let a = page.annotation(at: pagePoint), AnnotationKit.kind(a) == "link" { return .pointingHand }
+        if ReadingKit.link(at: pagePoint, on: page) != nil { return .pointingHand }
         return .iBeam
     }
 }
@@ -193,7 +217,6 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
             guard let self, event.window === self.window else { return event }
             if event.type == .leftMouseDown {
                 self.mouseDownPoint = event.locationInWindow
-                self.recordJumpIfLink(atWindowPoint: event.locationInWindow)
                 if let overlay = self.overlay,
                    !overlay.frame.contains(overlay.superview!.convert(event.locationInWindow, from: nil)) {
                     self.dismissOverlay()
