@@ -109,6 +109,13 @@ final class PageCounterView: NSVisualEffectView {
 /// A one-line input at the bottom of the window, used by Find and Go to Page.
 final class PromptBar: NSVisualEffectView, NSTextFieldDelegate {
     let field = NSTextField()
+    private let statusLabel = NSTextField(labelWithString: "")
+
+    /// Shown at the right of the bar, e.g. "3 of 27".
+    var status: String {
+        get { statusLabel.stringValue }
+        set { statusLabel.stringValue = newValue }
+    }
     var onChange: ((String) -> Void)?
     var onSubmit: ((String, Bool) -> Void)?
     var onCancel: (() -> Void)?
@@ -123,7 +130,11 @@ final class PromptBar: NSVisualEffectView, NSTextFieldDelegate {
         plainField(field, size: 15)
         field.stringValue = text
         field.delegate = self
-        let stack = NSStackView(views: [title, field])
+        statusLabel.font = .monospacedDigitSystemFont(ofSize: 12, weight: .regular)
+        statusLabel.textColor = .secondaryLabelColor
+        statusLabel.setContentHuggingPriority(.required, for: .horizontal)
+        statusLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+        let stack = NSStackView(views: [title, field, statusLabel])
         stack.orientation = .horizontal
         stack.spacing = 10
         stack.translatesAutoresizingMaskIntoConstraints = false

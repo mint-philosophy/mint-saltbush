@@ -171,6 +171,7 @@ extension ReaderWindowController {
         case "menu":
             // menu <title>: report whether a Saltbush menu command is enabled right now.
             let item = NSMenuItem(title: arg, action: #selector(performCommand(_:)), keyEquivalent: "")
+            item.tag = Commands.all.firstIndex { $0.title == arg } ?? 0
             append(log, "menu \(arg) enabled=\(validateMenuItem(item))")
         case "click":
             // click <fx> <fy>: a real click at a fraction of the page view's width and height.
@@ -252,6 +253,8 @@ extension ReaderWindowController {
             "fitScale": Double(pdfView.scaleFactorForSizeToFit),
             "linkPreviewOpen": linkPopover?.isShown ?? false,
             "theme": theme.name,
+            "findStatus": findBar?.superview != nil ? findBar!.status : "",
+            "highlightedMatches": pdfView.highlightedSelections?.count ?? 0,
             "pageCounter": pageCounter.isHidden ? "off" : pageCounter.text,
             "filters": pdfView.contentFilters.count,
             "clipboard": String((pasteboard.string(forType: .string) ?? "").prefix(120)),

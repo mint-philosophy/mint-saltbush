@@ -38,8 +38,7 @@ Papers open one page per screen, fitted to the window. Bare keys are always on; 
 | ⌘↑ / ⌘↓ | first / last page |
 | `g` (⌥⌘G) | go to page; accepts printed page numbers such as `245` |
 | ⌘[ / ⌘] | previous / next location: back to where you were before following a link, going to a page, jumping from the contents or notes list, or searching (page turns don't count) |
-| `s` (⌘F) | search as you type; all-lowercase ignores case. Return / ⇧Return go to the next / previous match; Esc closes and leaves the match selected |
-| ⌘G / ⇧⌘G | next / previous match after closing search |
+| `s` (⌘F) | search the whole document as you type; all-lowercase ignores case. Every match is highlighted and counted ("3 of 27"). Return / ⌘G go to the next match, ⇧Return / ⇧⌘G to the previous, starting from your page and wrapping round; Esc closes and leaves the match selected |
 | `h` | highlight the selection; overlapping highlights merge |
 | `n` | note on the selected passage (highlighting it if needed) or on the highlight you just made; otherwise on the highlight under the pointer, or a standalone note at the pointer |
 | `x` or ⌫ | remove the selected or just-made highlight, or the one under the pointer |

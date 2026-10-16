@@ -105,7 +105,11 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
     private var mouseMonitor: Any?
     private var mouseDownPoint: NSPoint?
     private var lastQuery = ""
-    private var searchAnchor: PDFSelection?
+    private var matchedQuery = ""
+    private var findMatches: [PDFSelection] = []
+    private var findIndex = 0
+    private var searchWork: DispatchWorkItem?
+    weak var findBar: PromptBar?
     private var overlay: NSView?
     private(set) var readerMode = false
     // The page view sits below the title bar normally and under it in reader mode.
@@ -295,6 +299,8 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
     /// so ⌘↑, ⌘↓ and the rest do what they do in any text field.
     @objc func validateMenuItem(_ item: NSMenuItem) -> Bool {
         guard item.action == #selector(performCommand(_:)) else { return true }
+        // ⌘G and ⇧⌘G keep working while you type in the find bar.
+        if ["Find Next", "Find Previous"].contains(Commands.all[item.tag].title) { return noteEditor == nil }
         return noteEditor == nil && !(window?.firstResponder is NSText)
     }
 
@@ -492,6 +498,7 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
     }
 
     func dismissOverlay(restoreFocus: Bool = true) {
+        if overlay != nil, overlay === findBar { pdfView.highlightedSelections = nil }
         overlay?.removeFromSuperview()
         overlay = nil
         if restoreFocus { window?.makeFirstResponder(pdfView) }
@@ -529,56 +536,87 @@ final class ReaderWindowController: NSWindowController, NSWindowDelegate, PDFPag
 
     // MARK: Find and go to page
 
+    /// Search covers the whole document. All matches are found at once, highlighted while the bar
+    /// is open, and counted ("3 of 27"); Return / ⌘G go to the next, ⇧Return / ⇧⌘G to the previous,
+    /// starting from the current page and wrapping round. Esc closes and leaves the match selected for h.
     func beginFind() {
         recordJump()
-        searchAnchor = pdfView.currentPage?.selection(for: NSRange(location: 0, length: 1))
-        // Return and ⇧Return step through matches; Esc closes and leaves the match selected for h.
         showPrompt("Find", initial: lastQuery, staysOpen: true, onChange: { [weak self] query in
-            self?.lastQuery = query
-            self?.findLive(query)
+            self?.scheduleSearch(query)
         }, onSubmit: { [weak self] query, shift in
             guard let self else { return }
-            self.lastQuery = query
-            self.findNext(backwards: shift)
+            if query != self.matchedQuery { self.runSearch(query) } else { self.stepMatch(shift ? -1 : 1) }
         })
+        findBar = overlay as? PromptBar
+        if !lastQuery.isEmpty { runSearch(lastQuery) }
     }
 
     /// Smart case: an all-lowercase query ignores case.
-    private func searchOptions(_ query: String, backwards: Bool = false) -> NSString.CompareOptions {
+    private func searchOptions(_ query: String) -> NSString.CompareOptions {
         var options: NSString.CompareOptions = [.diacriticInsensitive]
         if query == query.lowercased() { options.insert(.caseInsensitive) }
-        if backwards { options.insert(.backwards) }
         return options
     }
 
-    private func findLive(_ query: String) {
+    private func scheduleSearch(_ query: String) {
+        lastQuery = query
+        searchWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.runSearch(query) }
+        searchWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12, execute: work)
+    }
+
+    func runSearch(_ query: String) {
+        searchWork?.cancel()
+        lastQuery = query
+        matchedQuery = query
         guard let pdf, !query.isEmpty else {
-            pdfView.clearSelection()
+            findMatches = []
+            pdfView.highlightedSelections = nil
+            findBar?.status = ""
             return
         }
-        let options = searchOptions(query)
-        reveal(pdf.findString(query, fromSelection: searchAnchor, withOptions: options)
-            ?? pdf.findString(query, fromSelection: nil, withOptions: options))
+        findMatches = pdf.findString(query, withOptions: searchOptions(query))
+        guard !findMatches.isEmpty else {
+            pdfView.highlightedSelections = nil
+            pdfView.clearSelection()
+            findBar?.status = "No matches"
+            return
+        }
+        if findBar?.superview != nil {
+            for match in findMatches { match.color = NSColor.systemYellow.withAlphaComponent(0.45) }
+            pdfView.highlightedSelections = findMatches
+        }
+        // Start at the first match on or after the page you're reading.
+        let here = currentPageIndex
+        findIndex = findMatches.firstIndex { ($0.pages.first.map { pdf.index(for: $0) } ?? 0) >= here } ?? 0
+        showMatch()
+    }
+
+    private func stepMatch(_ delta: Int) {
+        guard !findMatches.isEmpty else { return }
+        findIndex = (findIndex + delta + findMatches.count) % findMatches.count
+        showMatch()
+    }
+
+    private func showMatch() {
+        let match = findMatches[findIndex]
+        pdfView.setCurrentSelection(match, animate: false)
+        pdfView.go(to: match)
+        let status = "\(findIndex + 1) of \(findMatches.count)"
+        if let findBar, findBar.superview != nil { findBar.status = status } else { hud.show(status) }
     }
 
     func findNext(backwards: Bool) {
-        guard let pdf, !lastQuery.isEmpty else {
+        guard !lastQuery.isEmpty else {
             beginFind()
             return
         }
-        let options = searchOptions(lastQuery, backwards: backwards)
-        let from = pdfView.currentSelection ?? pdfView.currentPage?.selection(for: NSRange(location: 0, length: 1))
-        reveal(pdf.findString(lastQuery, fromSelection: from, withOptions: options)
-            ?? pdf.findString(lastQuery, fromSelection: nil, withOptions: options))
-    }
-
-    private func reveal(_ selection: PDFSelection?) {
-        guard let selection else {
-            hud.show("Not found")
-            return
+        if lastQuery != matchedQuery || findMatches.isEmpty {
+            runSearch(lastQuery)
+        } else {
+            stepMatch(backwards ? -1 : 1)
         }
-        pdfView.setCurrentSelection(selection, animate: false)
-        pdfView.go(to: selection)
     }
 
     func promptPage() {
